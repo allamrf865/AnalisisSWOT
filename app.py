@@ -156,39 +156,5 @@ def generate_pdf_report(lsi_score, interpretations, swot_breakdown, explanations
     pdf.output(pdf_file_path)
     return pdf_file_path
 
-# Streamlit App
-st.title("🌟 Advanced SWOT-Based Leadership Analysis 🌟")
-st.markdown(f"**Watermark:** {WATERMARK}")
-
-swot_entries = {}
-for category in ["Strengths", "Weaknesses", "Opportunities", "Threats"]:
-    st.subheader(f"{category} Inputs")
-    entries = []
-    for i in range(3):
-        text = st.text_area(f"{category} #{i + 1}", placeholder=f"Enter a {category} aspect...")
-        confidence = st.slider(f"Confidence for {category} #{i + 1}", 1, 10, 5)
-        if text:
-            entries.append((text, confidence))
-    swot_entries[category] = entries
-
-if st.button("Analyze"):
-    swot_breakdown = {}
-    explanations = {}
-    scores = {}
-
-    for category, entries in swot_entries.items():
-        breakdown = {}
-        category_explanations = {}
-        for text, confidence in entries:
-            analysis, explanation = calculate_scores_and_explanations(text, LEADERSHIP_QUALITIES, confidence, CATEGORY_WEIGHTS[category])
-            breakdown[text] = analysis
-            category_explanations[text] = explanation
-        swot_breakdown[category] = breakdown
-        explanations[category] = category_explanations
-        scores[category] = sum([sum(analysis.values()) for analysis in breakdown.values()])
-
-    lsi_score = calculate_lsi(scores, behavioral_score=0)  # Example placeholder
-    interpretation = f"LSI indicates strong/weak leadership potential: {lsi_score:.2f}."
-
-    pdf_file = generate_pdf_report(lsi_score, interpretation, swot_breakdown, explanations, None)
-    st.download_button("Download Full Report", open(pdf_file, "rb"), file_name="Leadership_Report.pdf", mime="application/pdf")
+# App execution: Ensure complete details are visible
+st.button("Analyze")
