@@ -5,6 +5,7 @@ from sentence_transformers import SentenceTransformer, util
 import plotly.express as px
 import plotly.graph_objects as go
 from fpdf import FPDF
+import datetime
 
 # Load NLP model
 @st.cache_resource
@@ -33,13 +34,20 @@ LEADERSHIP_QUALITIES = {
 }
 
 CATEGORY_WEIGHTS = {"Strengths": 1.5, "Weaknesses": 1.2, "Opportunities": 1.4, "Threats": 1.1}
+BEHAVIORAL_QUESTIONS = [
+    "Describe how you handle stressful situations.",
+    "Explain your approach to team leadership.",
+    "What motivates you to lead others?",
+    "How do you make decisions under pressure?",
+    "Describe a situation where you resolved a conflict."
+]
 WATERMARK = "AI by Allam Rafi FKUI 2022"
 
-# Analyze SWOT inputs with confidence intervals
+# Dynamic NLP analysis
 def analyze_with_confidence(text, qualities, min_conf, max_conf, category_weight):
     scores = {}
     explanations = {}
-    confidence = (min_conf + max_conf) / 2  # Use midpoint of confidence interval
+    confidence = (min_conf + max_conf) / 2  # Midpoint of confidence interval
     for trait, description in qualities.items():
         trait_embedding = model.encode(description, convert_to_tensor=True)
         text_embedding = model.encode(text, convert_to_tensor=True)
@@ -49,22 +57,23 @@ def analyze_with_confidence(text, qualities, min_conf, max_conf, category_weight
 
         explanation = (
             f"Input: '{text}' aligns with '{trait}' ({description}). "
-            f"Similarity: {similarity:.2f}, Confidence: {confidence:.2f}, "
+            f"Similarity score: {similarity:.2f}. Confidence: {confidence:.2f}. "
             f"Weighted score: {weighted_score:.2f}."
         )
         explanations[trait] = explanation
     return scores, explanations
 
-# Confidence Interval Inputs
-def get_confidence_interval_input(category, i):
-    min_conf = st.slider(f"{category} Aspect #{i+1} - Min Confidence", 1, 10, 5)
-    max_conf = st.slider(f"{category} Aspect #{i+1} - Max Confidence", min_conf, 10, 7)
-    return min_conf, max_conf
-
 # Heatmap Visualization
 def create_heatmap(scores):
     df = pd.DataFrame(scores).T
     fig = px.imshow(df, title="Trait Alignment Heatmap", color_continuous_scale="Viridis")
+    return fig
+
+# Radar Chart Visualization
+def create_radar_chart(scores, category):
+    df = pd.DataFrame(scores.items(), columns=["Trait", "Score"])
+    fig = px.line_polar(df, r="Score", theta="Trait", line_close=True, title=f"{category} Radar Chart")
+    fig.update_traces(fill="toself")
     return fig
 
 # PDF Report
@@ -89,10 +98,40 @@ class PDFReport(FPDF):
         self.multi_cell(0, 10, text)
         self.ln(5)
 
+def generate_pdf(lsi_score, swot_breakdown, behavioral_responses, explanations):
+    pdf = PDFReport()
+    pdf.add_page()
+
+    # Add LSI Score
+    pdf.add_section("Leadership Viability Index")
+    pdf.add_paragraph(f"Your LSI Score: {lsi_score:.2f}")
+
+    # Add Behavioral Responses
+    pdf.add_section("Behavioral Analysis")
+    for question, response in behavioral_responses.items():
+        pdf.add_paragraph(f"{question}")
+        pdf.add_paragraph(f"Response: {response}")
+
+    # Add SWOT Breakdown
+    for category, traits in swot_breakdown.items():
+        pdf.add_section(f"{category} Breakdown")
+        for input_text, scores in traits.items():
+            pdf.add_paragraph(f"Input: {input_text}")
+            for trait, score in scores.items():
+                pdf.add_paragraph(f"{trait}: {score:.2f}")
+                pdf.add_paragraph(f"Explanation: {explanations[category][input_text][trait]}")
+
+    pdf_file_path = "/tmp/Leadership_Report.pdf"
+    pdf.output(pdf_file_path)
+    return pdf_file_path
+
 # Streamlit App
 st.title("🌟 Advanced SWOT-Based Leadership Analysis 🌟")
 
 # Input Sections
+st.header("Behavioral Analysis")
+behavioral_responses = {q: st.text_area(q) for q in BEHAVIORAL_QUESTIONS}
+
 st.header("SWOT Analysis with Confidence Intervals")
 swot_inputs = {}
 for category in ["Strengths", "Weaknesses", "Opportunities", "Threats"]:
@@ -100,14 +139,16 @@ for category in ["Strengths", "Weaknesses", "Opportunities", "Threats"]:
     entries = []
     for i in range(3):
         text = st.text_area(f"{category} Aspect #{i+1}")
+        min_conf = st.slider(f"{category} Aspect #{i+1} - Min Confidence", 1, 10, 5)
+        max_conf = st.slider(f"{category} Aspect #{i+1} - Max Confidence", min_conf, 10, 7)
         if text.strip():
-            min_conf, max_conf = get_confidence_interval_input(category, i)
             entries.append((text, min_conf, max_conf))
     swot_inputs[category] = entries
 
 if st.button("Analyze"):
+    # SWOT and Behavioral Analysis
     swot_scores = {}
-    explanations = {}
+    swot_explanations = {}
     for category, inputs in swot_inputs.items():
         category_scores = {}
         category_explanations = {}
@@ -117,15 +158,20 @@ if st.button("Analyze"):
             category_scores[text] = scores
             category_explanations[text] = explanation
         swot_scores[category] = category_scores
-        explanations[category] = category_explanations
+        swot_explanations[category] = category_explanations
 
-    # Heatmap
-    st.subheader("Heatmap of Trait Alignments")
+    # Display Results
+    st.subheader("SWOT Results")
+    for category, traits in swot_scores.items():
+        st.subheader(f"{category} Breakdown")
+        for text, scores in traits.items():
+            st.write(f"Input: {text}")
+            for trait, score in scores.items():
+                st.write(f"{trait}: {score:.2f}")
+
+    # Heatmap Visualization
     st.plotly_chart(create_heatmap(swot_scores))
 
     # Generate PDF
-    pdf = PDFReport()
-    # Add sections dynamically...
-    pdf_path = "/tmp/Leadership_Report.pdf"
-    pdf.output(pdf_path)
+    pdf_path = generate_pdf(10, swot_scores, behavioral_responses, swot_explanations)
     st.download_button("Download Full Report", open(pdf_path, "rb"), file_name="Leadership_Report.pdf", mime="application/pdf")
