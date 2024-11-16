@@ -11,6 +11,9 @@ from io import BytesIO
 # Config Streamlit
 st.set_page_config(page_title="Advanced SWOT Leadership Analysis", page_icon="🌟", layout="wide")
 
+# Define watermark for consistency
+WATERMARK = "AI by Muhammad Allam Rafi, CBOA® CDSP®"
+
 # Load NLP Model
 @st.cache_resource
 def load_model():
@@ -18,7 +21,7 @@ def load_model():
 
 model = load_model()
 
-# Leadership Traits (Expanded)
+# Leadership Traits
 LEADERSHIP_QUALITIES = {
     "Positive": {
         "Leadership": "Ability to lead and inspire others.",
@@ -64,29 +67,6 @@ def analyze_text_with_explanation(text, qualities, confidence, category_weight):
             f"Relevance: {relevance}."
         )
     return scores, explanations
-# Sidebar content
-st.sidebar.markdown(f"### **AI by Allam Rafi FKUI 2022**")
-st.sidebar.markdown("""
-👨‍⚕️ **About Me**  
-I am a **Medical Student** with a strong passion for **Machine Learning**, **Leadership Research**, and **Healthcare AI**.  
-- **Education**: Faculty of Medicine, Universitas Indonesia  
-- **Research Interests**:  
-  - Leadership Viability in Healthcare  
-  - AI-driven solutions for medical challenges  
-  - Natural Language Processing and Behavioral Analysis  
-- **Skills**: Python, NLP, Data Visualization
-""")
-
-st.sidebar.image("https://via.placeholder.com/150", caption="Muhammad Allam Rafi", use_column_width=True)
-
-st.sidebar.markdown("""
-📫 **Contact**  
-- [LinkedIn](https://linkedin.com)  
-- [GitHub](https://github.com)  
-- [Email](mailto:allamrafi@example.com)  
-""")
-
-st.sidebar.markdown(f"---\n**{WATERMARK}**")
 
 # Calculate LSI
 def calculate_lsi(scores):
@@ -153,7 +133,7 @@ class PDFReport(FPDF):
         self.set_font('Arial', '', 10)
         self.multi_cell(0, 10, content)
 
-def generate_pdf_report(swot_scores, lsi, lsi_interpretation, explanations):
+def generate_pdf_report(swot_scores, lsi, lsi_interpretation, explanations, heatmap_path, bar3d_path):
     pdf = PDFReport()
     pdf.add_page()
     pdf.set_font('Arial', 'B', 14)
@@ -164,6 +144,12 @@ def generate_pdf_report(swot_scores, lsi, lsi_interpretation, explanations):
     for category, traits in swot_scores.items():
         pdf.add_section(f"{category} Scores", "\n".join([f"{trait}: {value:.2f}" for trait, value in traits.items()]))
 
+    # Add Heatmap
+    pdf.image(heatmap_path, x=10, y=100, w=190)
+    pdf.add_page()
+
+    # Add 3D Bar Chart
+    pdf.image(bar3d_path, x=10, y=100, w=190)
     pdf.output("/tmp/report.pdf")
     return "/tmp/report.pdf"
 
@@ -199,11 +185,18 @@ if st.button("Analyze"):
     st.subheader(f"Leadership Viability Index (LSI): {lsi:.2f}")
     st.write(f"**Interpretation**: {lsi_interpretation}")
 
-    # Visualizations
-    st.plotly_chart(generate_2d_heatmap(swot_scores))
-    st.plotly_chart(generate_3d_bar_chart(swot_scores))
+    # Generate Visualizations
+    heatmap_fig = generate_2d_heatmap(swot_scores)
+    st.plotly_chart(heatmap_fig)
+    heatmap_path = "/tmp/heatmap.png"
+    heatmap_fig.write_image(heatmap_path)
+
+    bar3d_fig = generate_3d_bar_chart(swot_scores)
+    st.plotly_chart(bar3d_fig)
+    bar3d_path = "/tmp/bar3d.png"
+    bar3d_fig.write_image(bar3d_path)
 
     # Generate and Download PDF
-    pdf_path = generate_pdf_report(swot_scores, lsi, lsi_interpretation, swot_explanations)
+    pdf_path = generate_pdf_report(swot_scores, lsi, lsi_interpretation, swot_explanations, heatmap_path, bar3d_path)
     with open(pdf_path, "rb") as f:
         st.download_button("Download Professional PDF Report", f, "Leadership_Report.pdf", mime="application/pdf")
