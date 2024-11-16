@@ -7,7 +7,7 @@ from matplotlib.colors import ListedColormap
 from io import BytesIO
 from fpdf import FPDF
 import plotly.graph_objects as go
-import datetime
+import plotly.express as px
 
 # Load NLP model
 @st.cache_resource
@@ -37,15 +37,15 @@ LEADERSHIP_QUALITIES = {
 
 CATEGORY_WEIGHTS = {"Strengths": 1.5, "Weaknesses": 1.2, "Opportunities": 1.4, "Threats": 1.1}
 BEHAVIORAL_QUESTIONS = [
-    "Describe how you handle stressful situations.",
-    "Explain your approach to team leadership.",
-    "What motivates you to lead others?",
-    "How do you make decisions under pressure?",
-    "Describe a situation where you resolved a conflict."
+    "Describe how you handle stressful situations (in English or Indonesian).",
+    "Explain your approach to team leadership (in English or Indonesian).",
+    "What motivates you to lead others? (in English or Indonesian).",
+    "How do you make decisions under pressure? (in English or Indonesian).",
+    "Describe a situation where you resolved a conflict (in English or Indonesian)."
 ]
 WATERMARK = "AI by Allam Rafi FKUI 2022"
 
-# Dynamic NLP analysis
+# Analyze NLP Inputs
 def analyze_text_with_confidence(text, qualities, confidence, category_weight):
     scores = {}
     explanations = {}
@@ -55,16 +55,14 @@ def analyze_text_with_confidence(text, qualities, confidence, category_weight):
         similarity = util.pytorch_cos_sim(text_embedding, trait_embedding).item()
         weighted_score = similarity * (confidence / 10) * category_weight
         scores[trait] = weighted_score
-
-        explanation = (
+        explanations[trait] = (
             f"Input: '{text}' aligns with '{trait}' ({description}). "
             f"Similarity: {similarity:.2f}. Confidence: {confidence:.2f}. "
             f"Weighted score: {weighted_score:.2f}."
         )
-        explanations[trait] = explanation
     return scores, explanations
 
-# Generate colorful bar charts using Matplotlib
+# Generate Bar Chart
 def generate_bar_chart(scores, category):
     plt.figure(figsize=(10, 6))
     traits = list(scores.keys())
@@ -84,7 +82,49 @@ def generate_bar_chart(scores, category):
     plt.close()
     return buffer
 
-# Generate PDF Report
+# Generate Radar Chart
+def generate_radar_chart(scores, category):
+    labels = list(scores.keys())
+    values = list(scores.values()) + [list(scores.values())[0]]  # Close the radar chart
+    angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
+    angles += angles[:1]
+
+    fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
+    ax.fill(angles, values, color='blue', alpha=0.25)
+    ax.plot(angles, values, color='blue', linewidth=2)
+    ax.set_yticks([])
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(labels, fontsize=10)
+    ax.set_title(f"{category} Radar Chart", fontsize=14)
+
+    buffer = BytesIO()
+    plt.savefig(buffer, format="png")
+    buffer.seek(0)
+    plt.close()
+    return buffer
+
+# Generate 3D Scatter Plot
+def generate_3d_scatter(scores):
+    fig = go.Figure()
+    for category, data in scores.items():
+        for text, traits in data.items():
+            fig.add_trace(go.Scatter3d(
+                x=list(traits.values()), y=list(range(len(traits))), z=list(traits.values()),
+                mode='markers', marker=dict(size=8),
+                name=f"{category}: {text[:10]}..."
+            ))
+    fig.update_layout(title="3D SWOT Impact Visualization", scene=dict(
+        xaxis_title="Trait Scores", yaxis_title="Traits", zaxis_title="Categories"
+    ))
+    return fig
+
+# Generate Heatmap
+def generate_heatmap(scores):
+    df = pd.DataFrame(scores).T
+    fig = px.imshow(df, title="Trait Alignment Heatmap", color_continuous_scale="Viridis")
+    return fig
+
+# PDF Report Class
 class PDFReport(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 14)
@@ -110,41 +150,16 @@ class PDFReport(FPDF):
         self.image(img_buffer, x=10, y=self.get_y(), w=190)
         self.ln(65)
 
-def generate_pdf(lsi_score, swot_breakdown, behavioral_responses, explanations):
-    pdf = PDFReport()
-    pdf.add_page()
-
-    # Add LSI Score
-    pdf.add_section("Leadership Viability Index")
-    pdf.add_paragraph(f"Your LSI Score: {lsi_score:.2f}")
-
-    # Add Behavioral Responses
-    pdf.add_section("Behavioral Analysis")
-    for question, response in behavioral_responses.items():
-        pdf.add_paragraph(f"{question}")
-        pdf.add_paragraph(f"Response: {response}")
-
-    # Add SWOT Breakdown
-    for category, traits in swot_breakdown.items():
-        pdf.add_section(f"{category} Breakdown")
-        for input_text, scores in traits.items():
-            pdf.add_paragraph(f"Input: {input_text}")
-            for trait, score in scores.items():
-                pdf.add_paragraph(f"{trait}: {score:.2f}")
-                pdf.add_paragraph(f"Explanation: {explanations[category][input_text][trait]}")
-
-    pdf_file_path = "/tmp/Leadership_Report.pdf"
-    pdf.output(pdf_file_path)
-    return pdf_file_path
-
 # Streamlit App
+st.set_page_config(page_title="SWOT-Based Leadership Analysis", page_icon="🌟")
+st.sidebar.markdown(f"**{WATERMARK}**")
 st.title("🌟 Advanced SWOT-Based Leadership Analysis 🌟")
 
 # Behavioral Analysis
 st.header("Behavioral Analysis")
 behavioral_responses = {q: st.text_area(q) for q in BEHAVIORAL_QUESTIONS}
 
-# SWOT Inputs
+# SWOT Analysis
 st.header("SWOT Analysis")
 swot_inputs = {}
 for category in ["Strengths", "Weaknesses", "Opportunities", "Threats"]:
@@ -172,19 +187,23 @@ if st.button("Analyze"):
         swot_scores[category] = category_scores
         swot_explanations[category] = category_explanations
 
-    # Display Results and Visualizations
-    st.subheader("SWOT Analysis Results")
+    # Display Results
+    st.subheader("Results")
     for category, traits in swot_scores.items():
         st.subheader(f"{category} Breakdown")
         for text, scores in traits.items():
             st.write(f"Input: {text}")
             for trait, score in scores.items():
                 st.write(f"{trait}: {score:.2f}")
-
-            # Generate and display bar chart
             bar_chart = generate_bar_chart(scores, category)
-            st.image(bar_chart, caption=f"{category} Analysis", use_column_width=True)
+            st.image(bar_chart, caption=f"{category} Bar Chart", use_column_width=True)
 
-    # Generate PDF
-    pdf_path = generate_pdf(10, swot_scores, behavioral_responses, swot_explanations)
-    st.download_button("Download Full Report", open(pdf_path, "rb"), file_name="Leadership_Report.pdf", mime="application/pdf")
+    # Visualizations
+    st.plotly_chart(generate_3d_scatter(swot_scores))
+    st.plotly_chart(generate_heatmap(swot_scores))
+
+    # PDF Report
+    pdf = PDFReport()
+    pdf.add_page()
+    pdf.output("/tmp/report.pdf")
+    st.download_button("Download Full Report", open("/tmp/report.pdf", "rb"), file_name="Leadership_Report.pdf", mime="application/pdf")
