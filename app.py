@@ -2,20 +2,19 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 from sentence_transformers import SentenceTransformer, util
+import plotly.express as px
 import plotly.graph_objects as go
-from scipy.stats import entropy
 from fpdf import FPDF
-import matplotlib.pyplot as plt
 import io
 
-# Load multilingual model for NLP
+# Load multilingual NLP model
 @st.cache_resource
 def load_model():
     return SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
 model = load_model()
 
-# Expanded leadership qualities for analysis
+# Constants
 LEADERSHIP_QUALITIES = {
     "Leadership": "Ability to lead and inspire others",
     "Influence": "Capability to motivate and guide people",
@@ -30,11 +29,8 @@ LEADERSHIP_QUALITIES = {
     "Adaptability": "Flexibility to adjust to changing circumstances",
     "Time Management": "Prioritizing tasks to achieve efficiency and productivity",
     "Goal Orientation": "Focusing on achieving specific objectives",
-    "Accountability": "Taking responsibility for decisions and outcomes",
     "Problem-Solving": "Analyzing and resolving challenges effectively",
-    "Innovation": "Developing creative and new solutions to problems",
     "Resilience": "Recovering quickly from setbacks and staying focused",
-    "Emotional Intelligence": "Managing emotions and understanding others effectively",
     "Crisis Management": "Leading effectively during high-stress situations"
 }
 
@@ -44,21 +40,54 @@ WATERMARK = "AI by Allam Rafi FKUI 2022"
 # Calculate similarity scores
 def calculate_scores(text, qualities, confidence, category_weight):
     scores = {}
+    explanations = {}
+
     for trait, description in qualities.items():
         trait_embedding = model.encode(description, convert_to_tensor=True)
         text_embedding = model.encode(text, convert_to_tensor=True)
         similarity = util.pytorch_cos_sim(text_embedding, trait_embedding).item()
         weighted_score = similarity * (confidence / 10) * category_weight
         scores[trait] = weighted_score
-    return scores
 
-# Entropy-based diversity scoring
-def calculate_entropy(scores):
-    score_array = np.array(list(scores.values()))
-    if score_array.sum() == 0:
-        return 0
-    normalized_scores = score_array / score_array.sum()
-    return entropy(normalized_scores)
+        # Generate dynamic explanation
+        explanation = f"Your input ('{text}') was compared to the trait '{trait}': {description}.\n"
+        if similarity > 0.7:
+            explanation += f"The input strongly aligns with this trait (similarity: {similarity:.2f}), reflecting direct relevance. "
+        elif similarity > 0.4:
+            explanation += f"The input moderately aligns with this trait (similarity: {similarity:.2f}), suggesting partial relevance. "
+        else:
+            explanation += f"The input weakly aligns with this trait (similarity: {similarity:.2f}), indicating limited relevance. "
+        explanation += f"Final score is adjusted by confidence ({confidence}/10) and category weight ({category_weight})."
+        explanations[trait] = explanation
+
+    return scores, explanations
+
+# Create colorful 2D visualizations
+def create_visualizations(scores, category):
+    df = pd.DataFrame(list(scores.items()), columns=["Trait", "Score"]).sort_values(by="Score", ascending=False)
+    fig = px.bar(
+        df, x="Score", y="Trait", orientation="h", title=f"{category} Breakdown",
+        color="Score", color_continuous_scale="Viridis"
+    )
+    fig.update_layout(xaxis_title="Score", yaxis_title="Traits", template="plotly_dark")
+    return fig
+
+# Create 3D scatter plot
+def create_3d_visualization(scores):
+    df = pd.DataFrame(list(scores.items()), columns=["Category", "Score"])
+    fig = go.Figure(data=[go.Scatter3d(
+        x=df["Category"],
+        y=df["Score"],
+        z=np.random.rand(len(df)),  # Example data for 3D visualization
+        mode='markers',
+        marker=dict(size=12, color=df["Score"], colorscale='Viridis', opacity=0.8)
+    )])
+    fig.update_layout(scene=dict(
+        xaxis_title='Category',
+        yaxis_title='Score',
+        zaxis_title='Random Impact'
+    ))
+    return fig
 
 # Leadership Viability Index (LSI)
 def calculate_lsi(scores, behavioral_score, inconsistencies):
@@ -68,86 +97,92 @@ def calculate_lsi(scores, behavioral_score, inconsistencies):
     inconsistency_penalty = len(inconsistencies) * 0.1
     return np.log((positive / (negative + inconsistency_penalty + epsilon)) + epsilon)
 
+# Interpret LSI
+def interpret_lsi(lsi_score):
+    if lsi_score > 1.5:
+        return "Exceptional Leadership Potential. Highly suited for leadership roles."
+    elif 1.0 < lsi_score <= 1.5:
+        return "Strong Leadership Potential. Suitable for leadership but with minor areas for improvement."
+    elif 0.5 < lsi_score <= 1.0:
+        return "Moderate Leadership Potential. Notable areas for improvement exist."
+    elif 0.0 < lsi_score <= 0.5:
+        return "Low Leadership Potential. Requires significant development in key areas."
+    else:
+        return "Poor Leadership Fit. Needs substantial improvement before pursuing leadership roles."
+
 # Generate PDF report
-def generate_pdf(lsi_score, swot_breakdown, behavioral_analysis, radar_chart, scatter_plot):
-    pdf = FPDF()
+class AdvancedPDF(FPDF):
+    def header(self):
+        self.set_font('Arial', 'B', 16)
+        self.cell(0, 10, 'SWOT-Based Leadership Evaluation Report', ln=True, align='C')
+        self.set_font('Arial', 'I', 10)
+        self.cell(0, 10, WATERMARK, align='R', ln=True)
+        self.ln(10)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_font('Arial', 'I', 10)
+        self.cell(0, 10, 'Page ' + str(self.page_no()), align='C')
+
+    def add_section(self, title):
+        self.set_font('Arial', 'B', 14)
+        self.cell(0, 10, title, ln=True)
+        self.ln(5)
+
+    def add_paragraph(self, text):
+        self.set_font('Arial', '', 12)
+        self.multi_cell(0, 10, text)
+        self.ln(5)
+
+    def add_table(self, headers, data):
+        self.set_font('Arial', 'B', 12)
+        for header in headers:
+            self.cell(40, 10, header, border=1, align='C')
+        self.ln()
+        self.set_font('Arial', '', 12)
+        for row in data:
+            for cell in row:
+                self.cell(40, 10, str(cell), border=1)
+            self.ln()
+
+    def add_image(self, img_stream, title):
+        self.add_section(title)
+        img_stream.seek(0)
+        self.image(img_stream, x=10, y=self.get_y(), w=190)
+        self.ln(85)
+
+def generate_pdf(lsi_score, swot_breakdown, explanations, radar_chart_stream, bar_chart_stream):
+    pdf = AdvancedPDF()
     pdf.add_page()
-    pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 10, 'SWOT-Based Leadership Evaluation Report', ln=True, align='C')
-    pdf.set_font('Arial', 'I', 10)
-    pdf.cell(0, 10, WATERMARK, align='R', ln=True)
-    pdf.ln(10)
 
-    pdf.set_font('Arial', 'B', 14)
-    pdf.cell(0, 10, "Leadership Viability Index (LSI):", ln=True)
-    pdf.set_font('Arial', '', 12)
-    pdf.cell(0, 10, f"{lsi_score:.2f}", ln=True)
-    pdf.ln(5)
+    # Header and LSI Score
+    pdf.add_section("Leadership Viability Index (LSI)")
+    pdf.add_paragraph(f"Your LSI score is {lsi_score:.2f}. {interpret_lsi(lsi_score)}")
 
-    pdf.set_font('Arial', 'B', 14)
-    pdf.cell(0, 10, "SWOT Breakdown:", ln=True)
-    pdf.set_font('Arial', '', 12)
-    for category, details in swot_breakdown.items():
-        pdf.cell(0, 10, f"{category}:", ln=True)
-        for text, analysis in details.items():
-            pdf.cell(0, 10, f"Input: {text}", ln=True)
-            for trait, score in analysis.items():
-                pdf.cell(0, 10, f"  - {trait}: {score:.2f}", ln=True)
-        pdf.ln(5)
+    # SWOT Breakdown with Explanations
+    for category, breakdown in swot_breakdown.items():
+        pdf.add_section(f"{category} Breakdown")
+        for text, traits in breakdown.items():
+            pdf.add_paragraph(f"Input: {text}")
+            for trait, score in traits.items():
+                pdf.add_paragraph(f"- {trait}: {score:.2f}")
+                pdf.add_paragraph(f"  Explanation: {explanations[category][text][trait]}")
 
-    pdf.set_font('Arial', 'B', 14)
-    pdf.cell(0, 10, "Behavioral Analysis:", ln=True)
-    pdf.set_font('Arial', '', 12)
-    for example, score in behavioral_analysis.items():
-        pdf.cell(0, 10, f"Example: {example}", ln=True)
-        pdf.cell(0, 10, f" - Score: {score:.2f}", ln=True)
-    pdf.ln(5)
+    # Visualizations
+    pdf.add_image(radar_chart_stream, "Radar Chart")
+    pdf.add_image(bar_chart_stream, "Bar Chart")
 
-    radar_stream = io.BytesIO()
-    radar_chart.savefig(radar_stream, format='png')
-    radar_stream.seek(0)
-    pdf.image(radar_stream, x=10, y=pdf.get_y(), w=180)
-    pdf.ln(70)
+    # Signature
+    pdf.add_section("Disahkan oleh")
+    pdf.add_paragraph("Muhammad Allam Rafi, CBOA® CDSP®")
 
-    scatter_stream = io.BytesIO()
-    scatter_plot.savefig(scatter_stream, format='png')
-    scatter_stream.seek(0)
-    pdf.image(scatter_stream, x=10, y=pdf.get_y(), w=180)
-    pdf.ln(70)
-
-    pdf_file = "/tmp/Advanced_Leadership_Report.pdf"
+    pdf_file = "/tmp/Leadership_Report.pdf"
     pdf.output(pdf_file)
     return pdf_file
 
-# Create visualizations
-def create_visualizations(scores):
-    radar_data = list(scores.values())
-    qualities = list(scores.keys())
-    angles = np.linspace(0, 2 * np.pi, len(qualities), endpoint=False).tolist()
-    radar_data += radar_data[:1]
-    angles += angles[:1]
-
-    plt.figure(figsize=(6, 6))
-    ax = plt.subplot(111, polar=True)
-    ax.fill(angles, radar_data, color='blue', alpha=0.25)
-    ax.plot(angles, radar_data, color='blue', linewidth=2)
-    ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(qualities)
-    radar_chart = plt
-
-    fig = plt.figure(figsize=(6, 6))
-    ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(scores["Strengths"], scores["Weaknesses"], scores["Opportunities"], c=scores["Threats"], cmap='viridis')
-    ax.set_xlabel('Strengths')
-    ax.set_ylabel('Weaknesses')
-    ax.set_zlabel('Opportunities')
-    scatter_plot = plt
-
-    return radar_chart, scatter_plot
-
 # Streamlit App
 st.title("🌟 Advanced SWOT-Based Leadership Analysis 🌟")
-st.markdown("**Analyze your leadership potential with detailed input breakdown and professional recommendations.**")
+st.markdown(f"**Watermark:** {WATERMARK}")
 
 # Input
 swot_entries = {}
@@ -173,32 +208,38 @@ for i in range(2):
 if st.button("Analyze"):
     swot_breakdown = {}
     scores = {}
+    explanations = {}
     for category, entries in swot_entries.items():
         breakdown = {}
+        category_explanations = {}
         for text, confidence in entries:
-            analysis = calculate_scores(text, LEADERSHIP_QUALITIES, confidence, CATEGORY_WEIGHTS[category])
+            analysis, explanation = calculate_scores(text, LEADERSHIP_QUALITIES, confidence, CATEGORY_WEIGHTS[category])
             breakdown[text] = analysis
+            category_explanations[text] = explanation
         swot_breakdown[category] = breakdown
+        explanations[category] = category_explanations
         scores[category] = sum([sum(analysis.values()) for analysis in breakdown.values()])
 
     behavioral_analysis = {example: len(example.split()) / 50 for example in behavioral_examples}
     lsi_score = calculate_lsi(scores, np.mean(list(behavioral_analysis.values())), [])
 
-    radar_chart, scatter_plot = create_visualizations(scores)
     st.metric("Leadership Viability Index (LSI)", f"{lsi_score:.2f}")
+    st.markdown(f"**Interpretation:** {interpret_lsi(lsi_score)}")
 
+    # Display visualizations and explanations
     for category, breakdown in swot_breakdown.items():
         st.subheader(f"{category} Breakdown")
         for text, analysis in breakdown.items():
             st.write(f"**Input**: {text}")
             for trait, score in analysis.items():
                 st.write(f"- **{trait}**: {score:.2f}")
+                st.write(f"  - Explanation: {explanations[category][text][trait]}")
 
-    st.subheader("Behavioral Analysis")
-    for example, score in behavioral_analysis.items():
-        st.write(f"**Example**: {example}")
-        st.write(f"- Score: {score:.2f}")
+        # Generate and display colorful visualization
+        fig = create_visualizations(scores[category], category)
+        st.plotly_chart(fig)
 
-    pdf_file = generate_pdf(lsi_score, swot_breakdown, behavioral_analysis, radar_chart, scatter_plot)
-    with open(pdf_file, "rb") as f:
-        st.download_button("Download Full Report", f, file_name="Leadership_Evaluation_Report.pdf")
+    # Add 3D Visualization
+    st.subheader("3D Visualization of SWOT Impact")
+    fig_3d = create_3d_visualization(scores)
+    st.plotly_chart(fig_3d)
