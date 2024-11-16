@@ -2,36 +2,47 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 from sentence_transformers import SentenceTransformer, util
-import plotly.express as px
 import plotly.graph_objects as go
 from scipy.stats import entropy
-from fpdf import FPDF  # For PDF report generation
+from fpdf import FPDF
+import matplotlib.pyplot as plt
+import io
 
-# Load model with caching for speed optimization
+# Load multilingual model for NLP
 @st.cache_resource
 def load_model():
     return SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
 model = load_model()
 
-# Leadership qualities and their descriptions
+# Expanded leadership qualities for analysis
 LEADERSHIP_QUALITIES = {
     "Leadership": "Ability to lead and inspire others",
-    "Influence": "Capability to influence and motivate",
-    "Vision": "Having a clear and inspiring vision",
-    "Communication": "Effective communication skills",
-    "Empathy": "Understanding and empathy towards others",
-    "Strategic Thinking": "Ability to think strategically",
-    "Conflict Resolution": "Skill in resolving conflicts effectively",
-    "Resilience": "Ability to recover from setbacks and stay focused",
+    "Influence": "Capability to motivate and guide people",
+    "Vision": "Having a clear and inspiring direction for the future",
+    "Integrity": "Consistently acting with honesty and strong ethics",
+    "Confidence": "Demonstrating self-assuredness in decisions and actions",
+    "Empathy": "Ability to understand and share others' feelings",
+    "Team Collaboration": "Effectiveness in working with others to achieve common goals",
+    "Conflict Resolution": "Managing and resolving disagreements constructively",
+    "Strategic Thinking": "Ability to set long-term goals and plans",
+    "Decision-Making": "Making effective choices under uncertainty or pressure",
+    "Adaptability": "Flexibility to adjust to changing circumstances",
+    "Time Management": "Prioritizing tasks to achieve efficiency and productivity",
+    "Goal Orientation": "Focusing on achieving specific objectives",
+    "Accountability": "Taking responsibility for decisions and outcomes",
+    "Problem-Solving": "Analyzing and resolving challenges effectively",
+    "Innovation": "Developing creative and new solutions to problems",
+    "Resilience": "Recovering quickly from setbacks and staying focused",
+    "Emotional Intelligence": "Managing emotions and understanding others effectively",
+    "Crisis Management": "Leading effectively during high-stress situations"
 }
 
 CATEGORY_WEIGHTS = {"Strengths": 1.5, "Weaknesses": 1.2, "Opportunities": 1.4, "Threats": 1.1}
-
 WATERMARK = "AI by Allam Rafi FKUI 2022"
 
-# Scoring function for inputs
-def calculate_scores(text, qualities, confidence, category_weight, model):
+# Calculate similarity scores
+def calculate_scores(text, qualities, confidence, category_weight):
     scores = {}
     for trait, description in qualities.items():
         trait_embedding = model.encode(description, convert_to_tensor=True)
@@ -41,7 +52,7 @@ def calculate_scores(text, qualities, confidence, category_weight, model):
         scores[trait] = weighted_score
     return scores
 
-# Calculate entropy for diversity analysis
+# Entropy-based diversity scoring
 def calculate_entropy(scores):
     score_array = np.array(list(scores.values()))
     if score_array.sum() == 0:
@@ -57,110 +68,137 @@ def calculate_lsi(scores, behavioral_score, inconsistencies):
     inconsistency_penalty = len(inconsistencies) * 0.1
     return np.log((positive / (negative + inconsistency_penalty + epsilon)) + epsilon)
 
-# Generate a PDF report
-def generate_pdf_report(lsi_score, recommendations):
+# Generate PDF report
+def generate_pdf(lsi_score, swot_breakdown, behavioral_analysis, radar_chart, scatter_plot):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt="SWOT-Based Leadership Evaluation Report", ln=True, align="C")
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(0, 10, 'SWOT-Based Leadership Evaluation Report', ln=True, align='C')
+    pdf.set_font('Arial', 'I', 10)
+    pdf.cell(0, 10, WATERMARK, align='R', ln=True)
     pdf.ln(10)
-    pdf.set_font("Arial", size=10)
-    pdf.cell(200, 10, txt=f"Leadership Viability Index (LSI): {lsi_score:.2f}", ln=True)
-    pdf.ln(10)
-    for rec in recommendations:
-        pdf.multi_cell(0, 10, rec)
-    pdf.ln(10)
-    pdf.set_font("Arial", size=8, style="I")
-    pdf.cell(0, 10, txt=WATERMARK, align="R")
-    return pdf
 
-# Main app
-st.title("🌟 Comprehensive SWOT-Based Leadership Evaluation 🌟")
-st.write("**Analyze your leadership potential with advanced AI insights.**")
-st.markdown(f"**Watermark:** {WATERMARK}")
+    pdf.set_font('Arial', 'B', 14)
+    pdf.cell(0, 10, "Leadership Viability Index (LSI):", ln=True)
+    pdf.set_font('Arial', '', 12)
+    pdf.cell(0, 10, f"{lsi_score:.2f}", ln=True)
+    pdf.ln(5)
 
-# Step 1: Context Selection
-st.subheader("1️⃣ Select Leadership Context")
-context = st.selectbox("Choose your leadership context:", ["Startup", "Corporate", "Educational", "General"])
-CATEGORY_WEIGHTS.update({k: CATEGORY_WEIGHTS[k] + (0.1 if context == "Startup" and k == "Opportunities" else 0) for k in CATEGORY_WEIGHTS})
+    pdf.set_font('Arial', 'B', 14)
+    pdf.cell(0, 10, "SWOT Breakdown:", ln=True)
+    pdf.set_font('Arial', '', 12)
+    for category, details in swot_breakdown.items():
+        pdf.cell(0, 10, f"{category}:", ln=True)
+        for text, analysis in details.items():
+            pdf.cell(0, 10, f"Input: {text}", ln=True)
+            for trait, score in analysis.items():
+                pdf.cell(0, 10, f"  - {trait}: {score:.2f}", ln=True)
+        pdf.ln(5)
 
-# Step 2: Input SWOT Descriptions
-st.subheader("2️⃣ Input Your SWOT Analysis")
+    pdf.set_font('Arial', 'B', 14)
+    pdf.cell(0, 10, "Behavioral Analysis:", ln=True)
+    pdf.set_font('Arial', '', 12)
+    for example, score in behavioral_analysis.items():
+        pdf.cell(0, 10, f"Example: {example}", ln=True)
+        pdf.cell(0, 10, f" - Score: {score:.2f}", ln=True)
+    pdf.ln(5)
+
+    radar_stream = io.BytesIO()
+    radar_chart.savefig(radar_stream, format='png')
+    radar_stream.seek(0)
+    pdf.image(radar_stream, x=10, y=pdf.get_y(), w=180)
+    pdf.ln(70)
+
+    scatter_stream = io.BytesIO()
+    scatter_plot.savefig(scatter_stream, format='png')
+    scatter_stream.seek(0)
+    pdf.image(scatter_stream, x=10, y=pdf.get_y(), w=180)
+    pdf.ln(70)
+
+    pdf_file = "/tmp/Advanced_Leadership_Report.pdf"
+    pdf.output(pdf_file)
+    return pdf_file
+
+# Create visualizations
+def create_visualizations(scores):
+    radar_data = list(scores.values())
+    qualities = list(scores.keys())
+    angles = np.linspace(0, 2 * np.pi, len(qualities), endpoint=False).tolist()
+    radar_data += radar_data[:1]
+    angles += angles[:1]
+
+    plt.figure(figsize=(6, 6))
+    ax = plt.subplot(111, polar=True)
+    ax.fill(angles, radar_data, color='blue', alpha=0.25)
+    ax.plot(angles, radar_data, color='blue', linewidth=2)
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(qualities)
+    radar_chart = plt
+
+    fig = plt.figure(figsize=(6, 6))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(scores["Strengths"], scores["Weaknesses"], scores["Opportunities"], c=scores["Threats"], cmap='viridis')
+    ax.set_xlabel('Strengths')
+    ax.set_ylabel('Weaknesses')
+    ax.set_zlabel('Opportunities')
+    scatter_plot = plt
+
+    return radar_chart, scatter_plot
+
+# Streamlit App
+st.title("🌟 Advanced SWOT-Based Leadership Analysis 🌟")
+st.markdown("**Analyze your leadership potential with detailed input breakdown and professional recommendations.**")
+
+# Input
 swot_entries = {}
 for category in ["Strengths", "Weaknesses", "Opportunities", "Threats"]:
-    st.write(f"### {category}")
+    st.subheader(f"{category} Inputs")
     entries = []
     for i in range(3):
-        text = st.text_area(f"{category} #{i + 1}", placeholder=f"Enter a {category} aspect...")
+        text = st.text_area(f"{category} #{i + 1}", placeholder=f"Enter a {category} aspect (in English or Indonesian)...")
         confidence = st.slider(f"Confidence for {category} #{i + 1}", 1, 10, 5)
-        entries.append((text, confidence))
+        if text:
+            entries.append((text, confidence))
     swot_entries[category] = entries
 
-# Step 3: Behavioral Evidence
-st.subheader("3️⃣ Provide Behavioral Evidence")
+# Behavioral Evidence Section
+st.subheader("Behavioral Evidence")
 behavioral_examples = []
 for i in range(2):
-    example = st.text_area(f"Example #{i + 1}", placeholder="Describe a specific situation where you demonstrated leadership...")
+    example = st.text_area(f"Behavioral Example #{i + 1}", placeholder="Describe a leadership scenario...")
     if example:
         behavioral_examples.append(example)
 
-# Step 4: Analyze Results
+# Analyze Button
 if st.button("Analyze"):
+    swot_breakdown = {}
     scores = {}
-    entropy_scores = {}
-    behavioral_score = np.mean([min(len(example.split()) / 50, 1.0) for example in behavioral_examples]) if behavioral_examples else 0
-
-    # Calculate scores
     for category, entries in swot_entries.items():
-        combined_text = " ".join([entry[0] for entry in entries if entry[0]])
-        avg_conf = np.mean([entry[1] for entry in entries]) if entries else 5
-        category_weight = CATEGORY_WEIGHTS[category]
-        category_scores = calculate_scores(combined_text, LEADERSHIP_QUALITIES, avg_conf, category_weight, model)
-        scores[category] = sum(category_scores.values())
-        entropy_scores[category] = calculate_entropy(category_scores)
+        breakdown = {}
+        for text, confidence in entries:
+            analysis = calculate_scores(text, LEADERSHIP_QUALITIES, confidence, CATEGORY_WEIGHTS[category])
+            breakdown[text] = analysis
+        swot_breakdown[category] = breakdown
+        scores[category] = sum([sum(analysis.values()) for analysis in breakdown.values()])
 
-    # Calculate Leadership Viability Index
-    inconsistencies = []  # Placeholder for any future inconsistency checks
-    lsi_score = calculate_lsi(scores, behavioral_score, inconsistencies)
+    behavioral_analysis = {example: len(example.split()) / 50 for example in behavioral_examples}
+    lsi_score = calculate_lsi(scores, np.mean(list(behavioral_analysis.values())), [])
 
-    # Display Results
-    st.metric(label="Leadership Viability Index (LSI)", value=f"{lsi_score:.2f}")
-    st.write(f"Behavioral Credibility Score: {behavioral_score:.2f}")
+    radar_chart, scatter_plot = create_visualizations(scores)
+    st.metric("Leadership Viability Index (LSI)", f"{lsi_score:.2f}")
 
-    # Recommendations
-    st.subheader("Recommendations")
-    recommendations = []
-    for category, score in scores.items():
-        if category in ["Strengths", "Opportunities"] and score < 50:
-            recommendations.append(f"Improve your {category} by focusing on traits like Communication or Strategic Thinking.")
-        elif category in ["Weaknesses", "Threats"] and score > 70:
-            recommendations.append(f"Mitigate {category} issues by addressing areas like Conflict Avoidance or Procrastination.")
-    for rec in recommendations:
-        st.write(f"- {rec}")
+    for category, breakdown in swot_breakdown.items():
+        st.subheader(f"{category} Breakdown")
+        for text, analysis in breakdown.items():
+            st.write(f"**Input**: {text}")
+            for trait, score in analysis.items():
+                st.write(f"- **{trait}**: {score:.2f}")
 
-    # Visualizations
-    st.subheader("Visualizations")
-    radar_data = pd.DataFrame.from_dict(scores, orient='index', columns=["Score"])
-    radar_data["Category"] = radar_data.index
+    st.subheader("Behavioral Analysis")
+    for example, score in behavioral_analysis.items():
+        st.write(f"**Example**: {example}")
+        st.write(f"- Score: {score:.2f}")
 
-    # Radar Chart
-    fig_radar = px.line_polar(radar_data, r="Score", theta="Category", line_close=True, title="SWOT Radar Chart")
-    fig_radar.update_traces(fill="toself")
-    st.plotly_chart(fig_radar)
-
-    # 3D Scatter Plot
-    fig_scatter = go.Figure(data=[go.Scatter3d(
-        x=[scores["Strengths"]], y=[scores["Weaknesses"]], z=[scores["Opportunities"]],
-        mode="markers", marker=dict(size=10, color=scores["Threats"], colorscale="Viridis")
-    )])
-    fig_scatter.update_layout(scene=dict(xaxis_title="Strengths", yaxis_title="Weaknesses", zaxis_title="Opportunities"))
-    st.plotly_chart(fig_scatter)
-
-    # PDF Report
-    st.subheader("Download Report")
-    pdf = generate_pdf_report(lsi_score, recommendations)
-    pdf_file = f"/tmp/Leadership_Evaluation_Report.pdf"
-    pdf.output(pdf_file)
+    pdf_file = generate_pdf(lsi_score, swot_breakdown, behavioral_analysis, radar_chart, scatter_plot)
     with open(pdf_file, "rb") as f:
-        st.download_button("Download Report as PDF", f, file_name="Leadership_Evaluation_Report.pdf")
-
+        st.download_button("Download Full Report", f, file_name="Leadership_Evaluation_Report.pdf")
