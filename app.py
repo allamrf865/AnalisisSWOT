@@ -7,14 +7,13 @@ import plotly.graph_objects as go
 from fpdf import FPDF
 import io
 
-# Load multilingual NLP model
+# Load NLP model
 @st.cache_resource
 def load_model():
     return SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
 model = load_model()
 
-# Leadership qualities for evaluation
 LEADERSHIP_QUALITIES = {
     "Leadership": "Ability to lead and inspire others",
     "Influence": "Capability to motivate and guide people",
@@ -37,7 +36,7 @@ LEADERSHIP_QUALITIES = {
 CATEGORY_WEIGHTS = {"Strengths": 1.5, "Weaknesses": 1.2, "Opportunities": 1.4, "Threats": 1.1}
 WATERMARK = "AI by Allam Rafi FKUI 2022"
 
-# Calculate dynamic scores and explanations
+# Dynamic NLP explanations
 def calculate_scores_and_explanations(text, qualities, confidence, category_weight):
     scores = {}
     explanations = {}
@@ -50,38 +49,28 @@ def calculate_scores_and_explanations(text, qualities, confidence, category_weig
         weighted_score = similarity * (confidence / 10) * category_weight
         scores[trait] = weighted_score
 
+        # Dynamic explanation logic
         input_keywords = set(text.lower().split())
         trait_keywords = set(description.lower().split())
         overlapping_keywords = input_keywords.intersection(trait_keywords)
         missing_keywords = trait_keywords - input_keywords
 
-        explanation = f"Your input ('{text}') was compared to the trait '{trait}' ({description}).\n"
-        if similarity > 0.7:
-            explanation += (
-                f"Strong match with a similarity score of {similarity:.2f}. "
-                f"The input contains relevant elements such as {', '.join(overlapping_keywords) if overlapping_keywords else 'key leadership aspects'}."
-            )
-        elif similarity > 0.4:
-            explanation += (
-                f"Moderate match with a similarity score of {similarity:.2f}. "
-                f"It reflects some aspects of this trait, like {', '.join(overlapping_keywords) if overlapping_keywords else 'general qualities'}, "
-                f"but could improve by addressing {', '.join(missing_keywords) if missing_keywords else 'specific areas'}."
-            )
-        else:
-            explanation += (
-                f"Weak match with a similarity score of {similarity:.2f}. "
-                f"The input lacks alignment with key aspects like {', '.join(missing_keywords) if missing_keywords else 'important qualities'}."
-            )
+        explanation = (
+            f"Input: '{text}' aligns with '{trait}' ({description}). "
+            f"Similarity score: {similarity:.2f}. "
+        )
+        if overlapping_keywords:
+            explanation += f"Matched keywords: {', '.join(overlapping_keywords)}. "
+        if missing_keywords:
+            explanation += f"Missing elements: {', '.join(missing_keywords)}. "
+        explanation += f"Final score adjusted with confidence ({confidence}/10) and category weight ({category_weight})."
 
-        explanation += f" Final score adjusted by confidence ({confidence}/10) and category weight ({category_weight})."
         explanations[trait] = explanation
 
     return scores, explanations
 
 # Create colorful 2D visualizations
 def create_visualizations(scores, category):
-    if not scores:
-        return None
     df = pd.DataFrame(list(scores.items()), columns=["Trait", "Score"]).sort_values(by="Score", ascending=False)
     fig = px.bar(
         df, x="Score", y="Trait", orientation="h", title=f"{category} Breakdown",
@@ -93,18 +82,18 @@ def create_visualizations(scores, category):
 # Create 3D visualizations
 def create_3d_visualization(scores):
     df = pd.DataFrame(scores.items(), columns=["Category", "Score"])
-    df["Random Impact"] = np.random.uniform(0, 1, len(df))
+    df["Impact"] = np.random.uniform(0, 1, len(df))
     fig = go.Figure(data=[go.Scatter3d(
         x=df["Category"],
         y=df["Score"],
-        z=df["Random Impact"],
+        z=df["Impact"],
         mode='markers',
         marker=dict(size=10, color=df["Score"], colorscale='Viridis', opacity=0.8)
     )])
     fig.update_layout(scene=dict(
         xaxis_title='Category',
         yaxis_title='Score',
-        zaxis_title='Random Impact'
+        zaxis_title='Impact'
     ))
     return fig
 
@@ -114,11 +103,11 @@ def calculate_lsi(scores, behavioral_score):
     negative = scores.get("Weaknesses", 0) + scores.get("Threats", 0)
     return np.log((positive / (negative + 1e-9)) + 1e-9)
 
-# PDF Generation
-class AdvancedPDF(FPDF):
+# Generate PDF
+class PDFReport(FPDF):
     def header(self):
-        self.set_font('Arial', 'B', 16)
-        self.cell(0, 10, 'SWOT Leadership Evaluation Report', align='C', ln=True)
+        self.set_font('Arial', 'B', 14)
+        self.cell(0, 10, 'SWOT-Based Leadership Evaluation Report', align='C', ln=True)
         self.set_font('Arial', 'I', 10)
         self.cell(0, 10, WATERMARK, align='R', ln=True)
         self.ln(10)
@@ -129,53 +118,34 @@ class AdvancedPDF(FPDF):
         self.cell(0, 10, f'Page {self.page_no()}', align='C')
 
     def add_section(self, title):
-        self.set_font('Arial', 'B', 14)
+        self.set_font('Arial', 'B', 12)
         self.cell(0, 10, title, ln=True)
         self.ln(5)
 
     def add_paragraph(self, text):
-        self.set_font('Arial', '', 12)
+        self.set_font('Arial', '', 11)
         self.multi_cell(0, 10, text)
         self.ln(5)
 
-    def add_table(self, headers, data):
-        self.set_font('Arial', 'B', 12)
-        for header in headers:
-            self.cell(40, 10, header, border=1, align='C')
-        self.ln()
-        self.set_font('Arial', '', 12)
-        for row in data:
-            for cell in row:
-                self.cell(40, 10, str(cell), border=1)
-            self.ln()
-
-    def add_image(self, img_stream, title):
-        self.add_section(title)
-        img_stream.seek(0)
-        self.image(img_stream, x=10, y=self.get_y(), w=190)
-        self.ln(85)
-
     def add_signature(self):
         self.add_section("Authorized by")
-        self.set_font('Arial', 'B', 12)
         self.cell(0, 10, "Muhammad Allam Rafi, CBOA® CDSP®", ln=True)
-        self.ln(10)
 
-def generate_pdf(lsi_score, lsi_interpretation, swot_breakdown, explanations, visualizations):
-    pdf = AdvancedPDF()
+def generate_pdf_report(lsi_score, interpretations, swot_breakdown, explanations):
+    pdf = PDFReport()
     pdf.add_page()
 
     pdf.add_section("Leadership Viability Index")
-    pdf.add_paragraph(f"Your Leadership Viability Index (LSI) score is {lsi_score:.2f}.")
-    pdf.add_paragraph(lsi_interpretation)
+    pdf.add_paragraph(f"Your LSI Score: {lsi_score:.2f}")
+    pdf.add_paragraph(interpretations)
 
     for category, breakdown in swot_breakdown.items():
         pdf.add_section(f"{category} Breakdown")
-        for text, traits in breakdown.items():
-            pdf.add_paragraph(f"Input: {text}")
+        for input_text, traits in breakdown.items():
+            pdf.add_paragraph(f"Input: {input_text}")
             for trait, score in traits.items():
                 pdf.add_paragraph(f"- {trait}: {score:.2f}")
-                pdf.add_paragraph(f"  Explanation: {explanations[category][text][trait]}")
+                pdf.add_paragraph(f"  Explanation: {explanations[category][input_text][trait]}")
 
     pdf.add_signature()
 
@@ -183,11 +153,10 @@ def generate_pdf(lsi_score, lsi_interpretation, swot_breakdown, explanations, vi
     pdf.output(pdf_file_path)
     return pdf_file_path
 
-# Streamlit app
+# Streamlit App
 st.title("🌟 Advanced SWOT-Based Leadership Analysis 🌟")
 st.markdown(f"**Watermark:** {WATERMARK}")
 
-# Input fields
 swot_entries = {}
 for category in ["Strengths", "Weaknesses", "Opportunities", "Threats"]:
     st.subheader(f"{category} Inputs")
@@ -201,8 +170,9 @@ for category in ["Strengths", "Weaknesses", "Opportunities", "Threats"]:
 
 if st.button("Analyze"):
     swot_breakdown = {}
-    scores = {}
     explanations = {}
+    scores = {}
+
     for category, entries in swot_entries.items():
         breakdown = {}
         category_explanations = {}
@@ -212,18 +182,10 @@ if st.button("Analyze"):
             category_explanations[text] = explanation
         swot_breakdown[category] = breakdown
         explanations[category] = category_explanations
-        scores[category] = sum([sum(analysis.values()) for analysis in breakdown.values()]) if breakdown else 0
+        scores[category] = sum([sum(analysis.values()) for analysis in breakdown.values()])
 
-    lsi_score = calculate_lsi(scores, 0)  # Example behavioral_score placeholder
-    lsi_interpretation = "Exceptional Leadership Potential. Highly suited for leadership roles."
+    lsi_score = calculate_lsi(scores, behavioral_score=0)  # Example placeholder
+    interpretation = f"LSI indicates strong/weak leadership potential: {lsi_score:.2f}."
 
-    st.metric("Leadership Viability Index (LSI)", f"{lsi_score:.2f}")
-
-    # Generate PDF
-    pdf_file = generate_pdf(lsi_score, lsi_interpretation, swot_breakdown, explanations, {})
-    st.download_button(
-        label="Download Full Report",
-        data=open(pdf_file, "rb"),
-        file_name="Leadership_Report.pdf",
-        mime="application/pdf"
-    )
+    pdf_file = generate_pdf_report(lsi_score, interpretation, swot_breakdown, explanations)
+    st.download_button("Download Full Report", open(pdf_file, "rb"), file_name="Leadership_Report.pdf", mime="application/pdf")
