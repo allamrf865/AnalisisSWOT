@@ -153,7 +153,30 @@ class PDFReport(FPDF):
     def add_image(self, img_buffer):
         self.image(img_buffer, x=10, y=self.get_y(), w=190)
         self.ln(65)
+        
+# Sidebar content
+st.sidebar.markdown(f"### **AI by Allam Rafi FKUI 2022**")
+st.sidebar.markdown("""
+👨‍⚕️ **About Me**  
+I am a **Medical Student** with a strong passion for **Machine Learning**, **Leadership Research**, and **Healthcare AI**.  
+- **Education**: Faculty of Medicine, Universitas Indonesia  
+- **Research Interests**:  
+  - Leadership Viability in Healthcare  
+  - AI-driven solutions for medical challenges  
+  - Natural Language Processing and Behavioral Analysis  
+- **Skills**: Python, NLP, Data Visualization
+""")
 
+st.sidebar.image("https://via.placeholder.com/150", caption="Muhammad Allam Rafi", use_column_width=True)
+
+st.sidebar.markdown("""
+📫 **Contact**  
+- [LinkedIn](https://linkedin.com)  
+- [GitHub](https://github.com)  
+- [Email](mailto:allamrafi@example.com)  
+""")
+
+st.sidebar.markdown(f"---\n**{WATERMARK}**")
 # Streamlit App
 st.sidebar.markdown(f"**{WATERMARK}**")
 st.title("🌟 Advanced SWOT-Based Leadership Analysis 🌟")
