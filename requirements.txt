@@ -1,8 +1,7 @@
-streamlit
-sentence-transformers
-numpy
-pandas
-plotly
-scipy
-fpdf
-matplotlib
+streamlit==1.25.0
+numpy==1.26.0
+pandas==2.1.1
+sentence-transformers==2.2.2
+plotly==5.17.0
+fpdf==1.7.2
+kaleido==0.2.1
