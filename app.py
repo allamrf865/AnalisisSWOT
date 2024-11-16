@@ -5,11 +5,10 @@ from sentence_transformers import SentenceTransformer, util
 import plotly.express as px
 import plotly.graph_objects as go
 from fpdf import FPDF
-from datetime import datetime
 from io import BytesIO
 
 # Config Streamlit
-st.set_page_config(page_title="Advanced SWOT Leadership Analysis", page_icon="🌟", layout="wide")
+st.set_page_config(page_title="SWOT Leadership Analysis", page_icon="🌟", layout="wide")
 
 # Define watermark
 WATERMARK = "AI by Muhammad Allam Rafi, CBOA® CDSP®"
@@ -50,8 +49,26 @@ LEADERSHIP_QUALITIES = {
 
 CATEGORY_WEIGHTS = {"Strengths": 1.5, "Weaknesses": 1.3, "Opportunities": 1.4, "Threats": 1.2}
 
+# Sidebar
+st.sidebar.markdown(f"### **AI by Allam Rafi FKUI 2022**")
+st.sidebar.markdown("""
+👨‍⚕️ **About Me**  
+I am a **Medical Student** with a strong passion for **Machine Learning**, **Leadership Research**, and **Healthcare AI**.  
+- **Education**: Faculty of Medicine, Universitas Indonesia  
+- **Research Interests**:  
+  - Leadership Viability in Healthcare  
+  - AI-driven solutions for medical challenges  
+  - Natural Language Processing and Behavioral Analysis  
+- **Skills**: Python, NLP, Data Visualization
+""")
+st.sidebar.image("https://via.placeholder.com/150", caption="Muhammad Allam Rafi", use_column_width=True)
+st.sidebar.markdown(f"📫 **Contact**\n\n- LinkedIn: [LinkedIn](https://linkedin.com)\n- GitHub: [GitHub](https://github.com)\n- Email: allamrafi@example.com")
+st.sidebar.markdown(f"---\n**{WATERMARK}**")
+
 # Analyze Text with NLP
 def analyze_text_with_explanation(text, qualities, confidence, category_weight):
+    if not text.strip():
+        return {}, {}
     scores, explanations = {}, {}
     embeddings = model.encode([text] + list(qualities.values()), convert_to_tensor=True)
     text_embedding, trait_embeddings = embeddings[0], embeddings[1:]
@@ -60,67 +77,31 @@ def analyze_text_with_explanation(text, qualities, confidence, category_weight):
     for trait, similarity in zip(qualities.keys(), similarities):
         weighted_score = similarity * (confidence / 10) * category_weight
         scores[trait] = weighted_score
-        relevance = "High" if similarity > 0.75 else "Moderate" if similarity > 0.5 else "Low"
-        explanations[trait] = (
-            f"Input '{text}' aligns with '{trait}' ({qualities[trait]}). "
-            f"Similarity: {similarity:.2f}, Confidence: {confidence}/10, Weighted Score: {weighted_score:.2f}. "
-            f"Relevance: {relevance}."
-        )
+        explanations[trait] = f"Input aligns with '{trait}'. Similarity: {similarity:.2f}, Weighted Score: {weighted_score:.2f}."
     return scores, explanations
 
-# Behavioral Analysis
-def analyze_behavioral_responses(behavioral_responses):
-    behavioral_scores, behavioral_explanations = {}, {}
-    for question, response in behavioral_responses.items():
-        qualities = {**LEADERSHIP_QUALITIES["Positive"], **LEADERSHIP_QUALITIES["Neutral"]}
-        scores, explanations = analyze_text_with_explanation(response, qualities, confidence=10, category_weight=1)
-        behavioral_scores[question] = scores
-        behavioral_explanations[question] = explanations
-    return behavioral_scores, behavioral_explanations
+# Generate Visualizations
+def generate_2d_charts(scores):
+    df = pd.DataFrame(scores).T
+    bar_chart = px.bar(df, title="SWOT Scores (Bar Chart)")
+    line_chart = px.line(df, title="SWOT Scores (Line Chart)")
+    return bar_chart, line_chart
 
-# Link Behavioral to SWOT Categories
-def map_behavioral_to_swot(behavioral_scores):
-    swot_relevance = {"Strengths": 0, "Weaknesses": 0, "Opportunities": 0, "Threats": 0}
-    for question, scores in behavioral_scores.items():
-        for trait, score in scores.items():
-            if trait in LEADERSHIP_QUALITIES["Positive"]:
-                swot_relevance["Strengths"] += score
-            elif trait in LEADERSHIP_QUALITIES["Neutral"]:
-                swot_relevance["Opportunities"] += score
-            elif trait in LEADERSHIP_QUALITIES["Negative"]:
-                swot_relevance["Threats"] += score
-    return swot_relevance
+def generate_3d_charts(scores):
+    df = pd.DataFrame(scores).T.reset_index()
+    scatter_chart = px.scatter_3d(df, x='index', y=df.columns[0], z=df.columns[1], title="SWOT Scores (Scatter 3D)")
+    return scatter_chart
 
-# Calculate LSI
-def calculate_lsi(swot_scores, behavioral_relevance):
-    total_strengths = sum(swot_scores["Strengths"].values()) + behavioral_relevance["Strengths"]
-    total_weaknesses = sum(swot_scores["Weaknesses"].values()) + behavioral_relevance["Weaknesses"]
-    total_opportunities = sum(swot_scores["Opportunities"].values()) + behavioral_relevance["Opportunities"]
-    total_threats = sum(swot_scores["Threats"].values()) + behavioral_relevance["Threats"]
-
-    # Normalize values
-    total = total_strengths + total_weaknesses + total_opportunities + total_threats + 1e-9
-    strengths = total_strengths / total
-    weaknesses = total_weaknesses / total
-    opportunities = total_opportunities / total
-    threats = total_threats / total
-
-    # LSI Formula
-    numerator = strengths + opportunities * 1.3
-    denominator = weaknesses * 1.5 + threats * 1.2 + 1e-9
-    lsi = np.log((numerator / denominator) + 1e-9)
-    return lsi
-
-# Interpret LSI
-def interpret_lsi(lsi):
-    if lsi > 1.5:
-        return "Exceptional Leadership Potential"
-    elif lsi > 0.5:
-        return "Good Leadership Potential"
-    elif lsi > -0.5:
-        return "Moderate Leadership Potential"
-    else:
-        return "Needs Improvement"
+def generate_radar_chart(scores):
+    traits = list(scores.keys())
+    values = list(scores.values())
+    values.append(values[0])  # Close radar chart
+    angles = np.linspace(0, 2 * np.pi, len(traits), endpoint=False).tolist()
+    angles += angles[:1]
+    fig = go.Figure()
+    fig.add_trace(go.Scatterpolar(r=values, theta=traits, fill='toself'))
+    fig.update_layout(title="Radar Chart")
+    return fig
 
 # Generate PDF Report
 class PDFReport(FPDF):
@@ -139,7 +120,7 @@ class PDFReport(FPDF):
         self.set_font('Arial', '', 10)
         self.multi_cell(0, 10, content)
 
-def generate_pdf_report(swot_scores, behavioral_scores, lsi, lsi_interpretation, heatmap_path, bar3d_path):
+def generate_pdf_report(swot_scores, behavioral_scores, lsi, lsi_interpretation, charts_paths):
     pdf = PDFReport()
     pdf.add_page()
     pdf.set_font('Arial', 'B', 14)
@@ -154,45 +135,23 @@ def generate_pdf_report(swot_scores, behavioral_scores, lsi, lsi_interpretation,
     for question, scores in behavioral_scores.items():
         pdf.add_section(f"Behavioral: {question}", "\n".join([f"{trait}: {value:.2f}" for trait, value in scores.items()]))
 
-    # Add Heatmap
-    pdf.image(heatmap_path, x=10, y=100, w=190)
-    pdf.add_page()
-
-    # Add 3D Bar Chart
-    pdf.image(bar3d_path, x=10, y=100, w=190)
+    # Add Charts
+    for chart_path in charts_paths:
+        pdf.add_page()
+        pdf.image(chart_path, x=10, y=50, w=190)
     pdf.output("/tmp/report.pdf")
     return "/tmp/report.pdf"
 
-# Streamlit Interface
-st.title("🌟 Advanced SWOT Leadership Analysis 🌟")
-
-# Sidebar
-st.sidebar.markdown(f"### **AI by Allam Rafi FKUI 2022**")
-st.sidebar.markdown("""
-👨‍⚕️ **About Me**  
-I am a **Medical Student** with a strong passion for **Machine Learning**, **Leadership Research**, and **Healthcare AI**.  
-- **Education**: Faculty of Medicine, Universitas Indonesia  
-- **Research Interests**:  
-  - Leadership Viability in Healthcare  
-  - AI-driven solutions for medical challenges  
-  - Natural Language Processing and Behavioral Analysis  
-- **Skills**: Python, NLP, Data Visualization
-""")
-st.sidebar.image("https://via.placeholder.com/150", caption="Muhammad Allam Rafi", use_column_width=True)
-st.sidebar.markdown(f"📫 **Contact**\n\n- LinkedIn: [LinkedIn](https://linkedin.com)\n- GitHub: [GitHub](https://github.com)\n- Email: allamrafi@example.com")
-st.sidebar.markdown(f"---\n**{WATERMARK}**")
-
-# Add behavioral questions
-behavioral_questions = [
-    "Describe how you handle stress.",
-    "What motivates you to lead?",
-    "Share an example of when you resolved a conflict effectively."
-]
+# Collect Inputs
+swot_inputs = {cat: [(st.text_area(f"{cat} #{i+1}"), st.slider(f"{cat} #{i+1} Confidence", 1, 10, 5)) for i in range(3)] for cat in ["Strengths", "Weaknesses", "Opportunities", "Threats"]}
+behavioral_questions = ["How do you handle stress?", "What motivates you to lead?"]
 behavioral_responses = {q: st.text_area(q) for q in behavioral_questions}
 
-# Collect SWOT inputs
-swot_inputs = {cat: [(st.text_area(f"{cat} #{i+1}"), st.slider(f"{cat} #{i+1} Confidence", 1, 10, 5)) for i in range(3)] for cat in ["Strengths", "Weaknesses", "Opportunities", "Threats"]}
-
+if st.button("Analyze"):
+    # Analyze SWOT and Behavioral
+    swot_scores, behavioral_scores = {}, {}
+    # Process each input category...
+    # Display Results and Visualizations
 if st.button("Analyze"):
     # Analyze SWOT inputs
     swot_scores, swot_explanations = {}, {}
@@ -204,39 +163,84 @@ if st.button("Analyze"):
             else LEADERSHIP_QUALITIES["Neutral"]
         )
         for text, confidence in inputs:
-            if text.strip():
-                scores, explanations = analyze_text_with_explanation(text, qualities, confidence, CATEGORY_WEIGHTS[category])
-                category_scores.update(scores)
-                category_explanations.update(explanations)
+            scores, explanations = analyze_text_with_explanation(text, qualities, confidence, CATEGORY_WEIGHTS[category])
+            category_scores.update(scores)
+            category_explanations.update(explanations)
         swot_scores[category] = category_scores
         swot_explanations[category] = category_explanations
 
-    # Analyze Behavioral Responses
-    behavioral_scores, behavioral_explanations = analyze_behavioral_responses(behavioral_responses)
-    behavioral_relevance = map_behavioral_to_swot(behavioral_scores)
+    # Analyze Behavioral inputs
+    behavioral_scores, behavioral_explanations = {}, {}
+    for question, response in behavioral_responses.items():
+        scores, explanations = analyze_text_with_explanation(response, LEADERSHIP_QUALITIES["Positive"], confidence=10, category_weight=1)
+        behavioral_scores[question] = scores
+        behavioral_explanations[question] = explanations
 
     # Calculate LSI
-    lsi = calculate_lsi(swot_scores, behavioral_relevance)
-    lsi_interpretation = interpret_lsi(lsi)
+    total_strengths = sum([sum(swot_scores["Strengths"].values())]) + sum([sum(scores.values()) for scores in behavioral_scores.values()])
+    total_weaknesses = sum([sum(swot_scores["Weaknesses"].values())])
+    total_opportunities = sum([sum(swot_scores["Opportunities"].values())])
+    total_threats = sum([sum(swot_scores["Threats"].values())])
 
-    # Display Results
+    total = total_strengths + total_weaknesses + total_opportunities + total_threats + 1e-9
+    strengths_ratio = total_strengths / total
+    weaknesses_ratio = total_weaknesses / total
+    opportunities_ratio = total_opportunities / total
+    threats_ratio = total_threats / total
+
+    numerator = strengths_ratio + (opportunities_ratio * 1.3)
+    denominator = (weaknesses_ratio * 1.5) + (threats_ratio * 1.2) + 1e-9
+    lsi = np.log((numerator / denominator) + 1e-9)
+
+    lsi_interpretation = (
+        "Exceptional Leadership Potential" if lsi > 1.5 else
+        "Good Leadership Potential" if lsi > 0.5 else
+        "Moderate Leadership Potential" if lsi > -0.5 else
+        "Needs Improvement"
+    )
+
+    # Display LSI
     st.subheader(f"Leadership Viability Index (LSI): {lsi:.2f}")
     st.write(f"**Interpretation**: {lsi_interpretation}")
 
-    # Display Behavioral Analysis
-    st.subheader("Behavioral Analysis")
+    # Display SWOT Breakdown
+    st.subheader("SWOT Analysis Breakdown")
+    for category, traits in swot_scores.items():
+        st.write(f"### {category}")
+        for trait, score in traits.items():
+            st.write(f"- {trait}: {score:.2f}")
+
+    # Display Behavioral Breakdown
+    st.subheader("Behavioral Analysis Breakdown")
     for question, explanations in behavioral_explanations.items():
         st.write(f"**{question}**")
         for trait, explanation in explanations.items():
             st.write(f"- {trait}: {explanation}")
 
     # Generate Visualizations
-    heatmap_fig = px.imshow(pd.DataFrame(swot_scores).T.fillna(0), title="Trait Alignment Heatmap", color_continuous_scale="Viridis")
-    st.plotly_chart(heatmap_fig)
-    heatmap_path = "/tmp/heatmap.png"
-    heatmap_fig.write_image(heatmap_path)
+    st.subheader("Visualizations")
+    st.write("### 2D Charts")
+    bar_chart, line_chart = generate_2d_charts(swot_scores)
+    st.plotly_chart(bar_chart)
+    st.plotly_chart(line_chart)
 
-    bar3d_fig = px.bar_3d(x=list(swot_scores.keys()), y=list(swot_scores.values()), z=[], color=[], title="3D SWOT")
-    st.plotly_chart(bar3d_fig)
+    st.write("### 3D Charts")
+    scatter_chart = generate_3d_charts(swot_scores)
+    st.plotly_chart(scatter_chart)
 
-    pdf_path = generate_pdf_report(swot_scores, behavioral_scores, lsi, lsi_interpretation, heatmap_path, "/tmp/bar.png")
+    radar_chart = generate_radar_chart(swot_scores["Strengths"])
+    st.plotly_chart(radar_chart)
+
+    # Save charts for PDF
+    chart_paths = []
+    bar_chart.write_image("/tmp/bar_chart.png")
+    chart_paths.append("/tmp/bar_chart.png")
+    line_chart.write_image("/tmp/line_chart.png")
+    chart_paths.append("/tmp/line_chart.png")
+    scatter_chart.write_image("/tmp/scatter_chart.png")
+    chart_paths.append("/tmp/scatter_chart.png")
+
+    # Generate PDF Report
+    pdf_path = generate_pdf_report(swot_scores, behavioral_scores, lsi, lsi_interpretation, chart_paths)
+    with open(pdf_path, "rb") as f:
+        st.download_button("Download Professional PDF Report", f, "Leadership_Report.pdf", mime="application/pdf")
