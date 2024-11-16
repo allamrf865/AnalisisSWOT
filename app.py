@@ -4,10 +4,9 @@ import pandas as pd
 from sentence_transformers import SentenceTransformer, util
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-import plotly.graph_objects as go
+import seaborn as sns
 from fpdf import FPDF
 from datetime import datetime
-from io import BytesIO
 
 # Config Streamlit
 st.set_page_config(page_title="SWOT Leadership Analysis", page_icon="🌟", layout="wide")
@@ -91,41 +90,6 @@ def validate_inputs(swot_inputs):
     return False  # Semua input kosong
 
 # Generate Charts
-def generate_scatter_plot(swot_scores):
-    traits, categories, values = [], [], []
-    for category, traits_scores in swot_scores.items():
-        for trait, value in traits_scores.items():
-            traits.append(trait)
-            categories.append(category)
-            values.append(value)
-
-    fig = go.Figure(data=[go.Scatter3d(
-        x=categories, y=traits, z=values,
-        mode='markers',
-        marker=dict(size=8, color=values, colorscale='Viridis', opacity=0.8)
-    )])
-    fig.update_layout(title="SWOT Scatter Plot (3D)")
-    return fig
-
-def generate_surface_chart(swot_scores):
-    categories = list(swot_scores.keys())
-    traits = list(next(iter(swot_scores.values())).keys())
-    values = np.array([list(category.values()) for category in swot_scores.values()])
-
-    fig = go.Figure(data=[go.Surface(z=values, x=categories, y=traits)])
-    fig.update_layout(title="SWOT Surface Chart", scene=dict(
-        xaxis_title="Category",
-        yaxis_title="Traits",
-        zaxis_title="Scores"
-    ))
-    return fig
-
-def generate_pie_chart(swot_scores):
-    category_totals = {category: sum(traits.values()) for category, traits in swot_scores.items()}
-    fig = go.Figure(data=[go.Pie(labels=list(category_totals.keys()), values=list(category_totals.values()))])
-    fig.update_layout(title="SWOT Pie Chart")
-    return fig
-
 def generate_bar_chart(data, output_path):
     categories = list(data.keys())
     values = [np.mean(data[cat]) for cat in categories]
@@ -135,6 +99,15 @@ def generate_bar_chart(data, output_path):
     plt.title("SWOT Analysis Summary")
     plt.xlabel("Categories")
     plt.ylabel("Scores")
+    plt.tight_layout()
+    plt.savefig(output_path)
+    plt.close()
+
+def generate_heatmap(data, output_path):
+    df = pd.DataFrame(data).T.fillna(0)
+    plt.figure(figsize=(10, 6))
+    sns.heatmap(df, annot=True, cmap="viridis", fmt=".2f", cbar=True)
+    plt.title("SWOT Heatmap")
     plt.tight_layout()
     plt.savefig(output_path)
     plt.close()
@@ -212,20 +185,14 @@ if st.button("Analyze"):
         st.write(f"**Interpretation**: {lsi_interpretation}")
 
         # Generate and Display Charts
-        scatter_chart = generate_scatter_plot(swot_scores)
-        st.plotly_chart(scatter_chart)
-
-        surface_chart = generate_surface_chart(swot_scores)
-        st.plotly_chart(surface_chart)
-
-        pie_chart = generate_pie_chart(swot_scores)
-        st.plotly_chart(pie_chart)
-
         bar_chart_path = "/tmp/bar_chart.png"
+        heatmap_path = "/tmp/heatmap.png"
         generate_bar_chart(swot_scores, bar_chart_path)
+        generate_heatmap(swot_scores, heatmap_path)
         st.image(bar_chart_path, caption="SWOT Bar Chart")
+        st.image(heatmap_path, caption="SWOT Heatmap")
 
         # Generate PDF Report
-        pdf_path = generate_pdf_report(swot_scores, lsi, lsi_interpretation, [bar_chart_path])
+        pdf_path = generate_pdf_report(swot_scores, lsi, lsi_interpretation, [bar_chart_path, heatmap_path])
         with open(pdf_path, "rb") as f:
             st.download_button("Download Professional PDF Report", f, "Leadership_Report.pdf", mime="application/pdf")
