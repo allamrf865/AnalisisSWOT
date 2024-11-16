@@ -14,7 +14,7 @@ def load_model():
 
 model = load_model()
 
-# Constants
+# Leadership qualities for evaluation
 LEADERSHIP_QUALITIES = {
     "Leadership": "Ability to lead and inspire others",
     "Influence": "Capability to motivate and guide people",
@@ -64,6 +64,9 @@ def calculate_scores(text, qualities, confidence, category_weight):
 
 # Create colorful 2D visualizations
 def create_visualizations(scores, category):
+    if not scores:
+        st.warning(f"No valid scores for {category}. Please provide valid inputs.")
+        return None
     df = pd.DataFrame(list(scores.items()), columns=["Trait", "Score"]).sort_values(by="Score", ascending=False)
     fig = px.bar(
         df, x="Score", y="Trait", orientation="h", title=f"{category} Breakdown",
@@ -74,13 +77,14 @@ def create_visualizations(scores, category):
 
 # Create 3D scatter plot
 def create_3d_visualization(scores):
-    df = pd.DataFrame(list(scores.items()), columns=["Category", "Score"])
+    df = pd.DataFrame(scores.items(), columns=["Category", "Score"])
+    df["Random Impact"] = np.random.uniform(0, 1, len(df))  # Add random impact for visualization
     fig = go.Figure(data=[go.Scatter3d(
         x=df["Category"],
         y=df["Score"],
-        z=np.random.rand(len(df)),  # Example data for 3D visualization
+        z=df["Random Impact"],
         mode='markers',
-        marker=dict(size=12, color=df["Score"], colorscale='Viridis', opacity=0.8)
+        marker=dict(size=10, color=df["Score"], colorscale='Viridis', opacity=0.8)
     )])
     fig.update_layout(scene=dict(
         xaxis_title='Category',
@@ -213,12 +217,13 @@ if st.button("Analyze"):
         breakdown = {}
         category_explanations = {}
         for text, confidence in entries:
-            analysis, explanation = calculate_scores(text, LEADERSHIP_QUALITIES, confidence, CATEGORY_WEIGHTS[category])
-            breakdown[text] = analysis
-            category_explanations[text] = explanation
+            if text.strip():  # Only process valid inputs
+                analysis, explanation = calculate_scores(text, LEADERSHIP_QUALITIES, confidence, CATEGORY_WEIGHTS[category])
+                breakdown[text] = analysis
+                category_explanations[text] = explanation
         swot_breakdown[category] = breakdown
         explanations[category] = category_explanations
-        scores[category] = sum([sum(analysis.values()) for analysis in breakdown.values()])
+        scores[category] = sum([sum(analysis.values()) for analysis in breakdown.values()]) if breakdown else 0
 
     behavioral_analysis = {example: len(example.split()) / 50 for example in behavioral_examples}
     lsi_score = calculate_lsi(scores, np.mean(list(behavioral_analysis.values())), [])
@@ -237,7 +242,8 @@ if st.button("Analyze"):
 
         # Generate and display colorful visualization
         fig = create_visualizations(scores[category], category)
-        st.plotly_chart(fig)
+        if fig:
+            st.plotly_chart(fig)
 
     # Add 3D Visualization
     st.subheader("3D Visualization of SWOT Impact")
