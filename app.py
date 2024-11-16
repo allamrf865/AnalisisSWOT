@@ -115,6 +115,34 @@ def generate_3d_bar_chart(scores):
             values.append(value)
     fig = px.bar_3d(x=categories, y=traits, z=values, title="3D SWOT Scores", color=values, color_continuous_scale="Viridis")
     return fig
+# Define watermark for consistency
+WATERMARK = "AI by Muhammad Allam Rafi, CBOA® CDSP®"
+
+# Sidebar content
+st.sidebar.markdown(f"### **AI by Allam Rafi FKUI 2022**")
+st.sidebar.markdown("""
+👨‍⚕️ **About Me**  
+I am a **Medical Student** with a strong passion for **Machine Learning**, **Leadership Research**, and **Healthcare AI**.  
+- **Education**: Faculty of Medicine, Universitas Indonesia  
+- **Research Interests**:  
+  - Leadership Viability in Healthcare  
+  - AI-driven solutions for medical challenges  
+  - Natural Language Processing and Behavioral Analysis  
+- **Skills**: Python, NLP, Data Visualization
+""")
+
+# Placeholder image for profile with caption
+st.sidebar.image("https://via.placeholder.com/150", caption="Muhammad Allam Rafi", use_column_width=True)
+
+st.sidebar.markdown("""
+📫 **Contact**  
+- [LinkedIn](https://linkedin.com)  
+- [GitHub](https://github.com)  
+- [Email](mailto:allamrafi@example.com)  
+""")
+
+# Watermark
+st.sidebar.markdown(f"---\n**{WATERMARK}**")
 
 # Generate PDF Report
 class PDFReport(FPDF):
