@@ -8,6 +8,10 @@ from io import BytesIO
 from fpdf import FPDF
 import plotly.graph_objects as go
 import plotly.express as px
+import datetime
+
+# Set Streamlit page configuration (must be first command)
+st.set_page_config(page_title="SWOT-Based Leadership Analysis", page_icon="🌟", layout="wide")
 
 # Load NLP model
 @st.cache_resource
@@ -151,7 +155,6 @@ class PDFReport(FPDF):
         self.ln(65)
 
 # Streamlit App
-st.set_page_config(page_title="SWOT-Based Leadership Analysis", page_icon="🌟")
 st.sidebar.markdown(f"**{WATERMARK}**")
 st.title("🌟 Advanced SWOT-Based Leadership Analysis 🌟")
 
