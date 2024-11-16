@@ -6,6 +6,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from fpdf import FPDF
 import io
+import datetime
 
 # Load NLP model
 @st.cache_resource
@@ -71,6 +72,8 @@ def calculate_scores_and_explanations(text, qualities, confidence, category_weig
 
 # Create colorful 2D visualizations
 def create_visualizations(scores, category):
+    if not scores:
+        return None
     df = pd.DataFrame(list(scores.items()), columns=["Trait", "Score"]).sort_values(by="Score", ascending=False)
     fig = px.bar(
         df, x="Score", y="Trait", orientation="h", title=f"{category} Breakdown",
@@ -131,7 +134,7 @@ class PDFReport(FPDF):
         self.add_section("Authorized by")
         self.cell(0, 10, "Muhammad Allam Rafi, CBOA® CDSP®", ln=True)
 
-def generate_pdf_report(lsi_score, interpretations, swot_breakdown, explanations):
+def generate_pdf_report(lsi_score, interpretations, swot_breakdown, explanations, visualizations):
     pdf = PDFReport()
     pdf.add_page()
 
@@ -187,5 +190,5 @@ if st.button("Analyze"):
     lsi_score = calculate_lsi(scores, behavioral_score=0)  # Example placeholder
     interpretation = f"LSI indicates strong/weak leadership potential: {lsi_score:.2f}."
 
-    pdf_file = generate_pdf_report(lsi_score, interpretation, swot_breakdown, explanations)
+    pdf_file = generate_pdf_report(lsi_score, interpretation, swot_breakdown, explanations, None)
     st.download_button("Download Full Report", open(pdf_file, "rb"), file_name="Leadership_Report.pdf", mime="application/pdf")
