@@ -171,12 +171,8 @@ st.sidebar.image("https://via.placeholder.com/150", caption="Muhammad Allam Rafi
 
 st.sidebar.markdown("""
 📫 **Contact**  
-- [LinkedIn](https://linkedin.com)  
-- [GitHub](https://github.com)  
-- [Email](mailto:allamrafi@example.com)  
+- [Email](mailto:muhallraf123@gmail.com)  
 """)
-
-st.sidebar.markdown(f"---\n**{WATERMARK}**")
 # Streamlit App
 st.sidebar.markdown(f"**{WATERMARK}**")
 st.title("🌟 Advanced SWOT-Based Leadership Analysis 🌟")
