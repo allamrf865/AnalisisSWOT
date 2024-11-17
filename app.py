@@ -172,39 +172,41 @@ def generate_heatmap(data, output_path):
     plt.savefig(output_path)
     plt.close()
 
-# Generate 3D Charts
-def generate_3d_scatter(data, output_path):
-    fig = plt.figure(figsize=(10, 7))
-    ax = fig.add_subplot(111, projection='3d')
-    categories = list(data.keys())
-    for category_idx, (category, traits) in enumerate(data.items()):
-        xs = np.arange(len(traits))
-        ys = list(traits.values())
-        zs = category_idx
-        ax.scatter(xs, [zs]*len(xs), ys, label=category)
-    ax.set_title("3D Scatter Plot - SWOT Scores")
-    ax.set_xlabel("Traits")
-    ax.set_ylabel("Categories")
-    ax.set_zlabel("Scores")
-    plt.legend()
-    plt.savefig(output_path)
-    plt.close()
-
+# Generate 3D Surface Plot with Error Handling
 def generate_3d_surface(data, output_path):
-    fig = plt.figure(figsize=(10, 7))
-    ax = fig.add_subplot(111, projection='3d')
-    categories = list(data.keys())
-    x = np.arange(len(categories))
-    y = np.arange(len(next(iter(data.values()))))
-    x, y = np.meshgrid(x, y)
-    z = np.array([list(traits.values()) for traits in data.values()])
-    ax.plot_surface(x, y, z, cmap="viridis", edgecolor='k')
-    ax.set_title("3D Surface Plot - SWOT Scores")
-    ax.set_xlabel("Categories")
-    ax.set_ylabel("Traits")
-    ax.set_zlabel("Scores")
-    plt.savefig(output_path)
-    plt.close()
+    # Ensure all categories have consistent keys and numeric values
+    all_traits = {trait for traits in data.values() for trait in traits.keys()}
+    fixed_data = {
+        category: {trait: traits.get(trait, 0) for trait in all_traits}
+        for category, traits in data.items()
+    }
+    
+    try:
+        # Convert to numpy array
+        categories = list(fixed_data.keys())
+        traits = list(all_traits)
+        
+        # Ensure consistent ordering of traits for each category
+        z = np.array([list(fixed_data[category].values()) for category in categories])
+        
+        # Generate X and Y grids
+        x = np.arange(len(categories))
+        y = np.arange(len(traits))
+        x, y = np.meshgrid(x, y)
+        
+        # Plot 3D Surface
+        fig = plt.figure(figsize=(10, 7))
+        ax = fig.add_subplot(111, projection='3d')
+        ax.plot_surface(x, y, z.T, cmap="viridis", edgecolor='k')  # Transpose Z to match dimensions
+        ax.set_title("3D Surface Plot - SWOT Scores")
+        ax.set_xlabel("Categories")
+        ax.set_ylabel("Traits")
+        ax.set_zlabel("Scores")
+        plt.savefig(output_path)
+        plt.close()
+    except ValueError as e:
+        st.error(f"Error generating 3D surface plot: {e}")
+        st.warning("Ensure data has consistent numeric values across all categories and traits.")
 
 # Generate PDF Report
 class PDFReport(FPDF):
