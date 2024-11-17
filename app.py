@@ -134,11 +134,22 @@ def validate_inputs(swot_inputs, behavior_inputs):
             return True
     return False  # Semua input kosong
 
-# Generate 2D Charts
+# Generate 2D Charts with Error Handling
 def generate_bar_chart(data, output_path):
     categories = list(data.keys())
-    values = [np.mean(data[cat]) for cat in categories]
-
+    values = []
+    
+    for cat in categories:
+        try:
+            # Safely calculate the mean, fallback to 0 if the category data is invalid
+            mean_value = np.mean(data[cat]) if len(data[cat]) > 0 else 0
+            values.append(mean_value)
+        except TypeError:
+            # Handle cases where data[cat] contains non-numeric values
+            values.append(0)
+            st.warning(f"Non-numeric or invalid data found in category '{cat}'. Defaulting to 0.")
+    
+    # Proceed to generate the bar chart
     plt.figure(figsize=(8, 5))
     plt.bar(categories, values, color=['green', 'red', 'blue', 'orange'])
     plt.title("SWOT Analysis Summary")
