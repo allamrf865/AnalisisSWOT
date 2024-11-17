@@ -172,6 +172,43 @@ def generate_heatmap(data, output_path):
     plt.savefig(output_path)
     plt.close()
 
+# Generate 3D Scatter Plot with Error Handling
+def generate_3d_scatter(data, output_path):
+    # Ensure all categories have consistent keys and numeric values
+    all_traits = {trait for traits in data.values() for trait in traits.keys()}
+    fixed_data = {
+        category: {trait: traits.get(trait, 0) for trait in all_traits}
+        for category, traits in data.items()
+    }
+
+    try:
+        # Prepare data for 3D scatter plot
+        categories = list(fixed_data.keys())
+        traits = list(all_traits)
+        category_indices = np.arange(len(categories))
+
+        fig = plt.figure(figsize=(10, 7))
+        ax = fig.add_subplot(111, projection='3d')
+
+        for category_idx, (category, traits_values) in enumerate(fixed_data.items()):
+            xs = np.arange(len(traits_values))  # Traits indices
+            ys = list(traits_values.values())  # Trait values
+            zs = [category_idx] * len(xs)      # Fixed Z for each category
+            ax.scatter(xs, zs, ys, label=category)
+
+        ax.set_title("3D Scatter Plot - SWOT Scores")
+        ax.set_xlabel("Traits")
+        ax.set_ylabel("Categories")
+        ax.set_zlabel("Scores")
+        ax.legend(loc="best")
+        plt.tight_layout()
+        plt.savefig(output_path)
+        plt.close()
+    except Exception as e:
+        st.error(f"Error generating 3D scatter plot: {e}")
+        st.warning("Ensure all input data is valid and numeric.")
+
+
 # Generate 3D Surface Plot with Error Handling
 def generate_3d_surface(data, output_path):
     # Ensure all categories have consistent keys and numeric values
