@@ -4,7 +4,6 @@ import pandas as pd
 from sentence_transformers import SentenceTransformer, util
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-import seaborn as sns
 from fpdf import FPDF
 from datetime import datetime
 
@@ -82,14 +81,19 @@ def analyze_text_with_explanation(text, qualities, confidence, category_weight):
     return scores, explanations
 
 # Validate Inputs
-def validate_inputs(swot_inputs):
+def validate_inputs(swot_inputs, behavior_inputs):
+    # Validasi SWOT
     for category, inputs in swot_inputs.items():
         for text, _ in inputs:
             if text.strip():  # Jika ada teks valid
                 return True
+    # Validasi Behavior
+    for response in behavior_inputs.values():
+        if response.strip():
+            return True
     return False  # Semua input kosong
 
-# Generate Charts
+# Generate 2D Charts
 def generate_bar_chart(data, output_path):
     categories = list(data.keys())
     values = [np.mean(data[cat]) for cat in categories]
@@ -103,12 +107,50 @@ def generate_bar_chart(data, output_path):
     plt.savefig(output_path)
     plt.close()
 
+# Generate Heatmap
 def generate_heatmap(data, output_path):
     df = pd.DataFrame(data).T.fillna(0)
     plt.figure(figsize=(10, 6))
-    sns.heatmap(df, annot=True, cmap="viridis", fmt=".2f", cbar=True)
+    plt.imshow(df, cmap="viridis", interpolation="nearest", aspect="auto")
+    plt.colorbar(label="Scores")
     plt.title("SWOT Heatmap")
+    plt.xlabel("Traits")
+    plt.ylabel("Categories")
     plt.tight_layout()
+    plt.savefig(output_path)
+    plt.close()
+
+# Generate 3D Charts
+def generate_3d_scatter(data, output_path):
+    fig = plt.figure(figsize=(10, 7))
+    ax = fig.add_subplot(111, projection='3d')
+    categories = list(data.keys())
+    for category_idx, (category, traits) in enumerate(data.items()):
+        xs = np.arange(len(traits))
+        ys = list(traits.values())
+        zs = category_idx
+        ax.scatter(xs, [zs]*len(xs), ys, label=category)
+    ax.set_title("3D Scatter Plot - SWOT Scores")
+    ax.set_xlabel("Traits")
+    ax.set_ylabel("Categories")
+    ax.set_zlabel("Scores")
+    plt.legend()
+    plt.savefig(output_path)
+    plt.close()
+
+def generate_3d_surface(data, output_path):
+    fig = plt.figure(figsize=(10, 7))
+    ax = fig.add_subplot(111, projection='3d')
+    categories = list(data.keys())
+    x = np.arange(len(categories))
+    y = np.arange(len(next(iter(data.values()))))
+    x, y = np.meshgrid(x, y)
+    z = np.array([list(traits.values()) for traits in data.values()])
+    ax.plot_surface(x, y, z, cmap="viridis", edgecolor='k')
+    ax.set_title("3D Surface Plot - SWOT Scores")
+    ax.set_xlabel("Categories")
+    ax.set_ylabel("Traits")
+    ax.set_zlabel("Scores")
     plt.savefig(output_path)
     plt.close()
 
@@ -129,12 +171,15 @@ class PDFReport(FPDF):
         self.set_font('Arial', '', 10)
         self.multi_cell(0, 10, content)
 
-def generate_pdf_report(swot_scores, lsi, lsi_interpretation, chart_paths):
+def generate_pdf_report(swot_scores, lsi, lsi_interpretation, behavior_results, chart_paths):
     pdf = PDFReport()
     pdf.add_page()
     pdf.set_font('Arial', 'B', 14)
     pdf.cell(0, 10, f"Leadership Viability Index (LSI): {lsi:.2f}", ln=True)
     pdf.cell(0, 10, f"Interpretation: {lsi_interpretation}", ln=True)
+
+    # Add Behavior Results
+    pdf.add_section("Behavioral Analysis Results", "\n".join([f"{q}: {a}" for q, a in behavior_results.items()]))
 
     # Add SWOT Scores
     for category, traits in swot_scores.items():
@@ -147,12 +192,22 @@ def generate_pdf_report(swot_scores, lsi, lsi_interpretation, chart_paths):
     pdf.output("/tmp/report.pdf")
     return "/tmp/report.pdf"
 
+# Behavior Questions
+behavior_questions = {
+    "Q1": "Describe how you handle stress.",
+    "Q2": "What motivates you to lead others?",
+    "Q3": "How do you approach conflict resolution?",
+    "Q4": "What is your strategy for long-term planning?",
+    "Q5": "How do you inspire teamwork in challenging situations?"
+}
+
 # Collect Inputs
 swot_inputs = {cat: [(st.text_area(f"{cat} #{i+1}"), st.slider(f"{cat} #{i+1} Confidence", 1, 10, 5)) for i in range(3)] for cat in ["Strengths", "Weaknesses", "Opportunities", "Threats"]}
+behavior_inputs = {q: st.text_area(q) for q in behavior_questions.values()}
 
 if st.button("Analyze"):
-    if not validate_inputs(swot_inputs):
-        st.warning("Please provide at least one valid input for SWOT analysis.")
+    if not validate_inputs(swot_inputs, behavior_inputs):
+        st.warning("Please provide at least one valid input for SWOT or Behavioral analysis.")
     else:
         # Analyze SWOT
         swot_scores, swot_explanations = {}, {}
@@ -168,6 +223,13 @@ if st.button("Analyze"):
                 category_scores.update(scores)
                 category_explanations.update(explanations)
             swot_scores[category] = category_scores
+
+        # Analyze Behavior
+        behavior_scores = {}
+        for question, response in behavior_inputs.items():
+            if response.strip():
+                scores, _ = analyze_text_with_explanation(response, LEADERSHIP_QUALITIES["Positive"], 5, 1.0)
+                behavior_scores[question] = scores
 
         # Calculate LSI
         total_strengths = sum(swot_scores["Strengths"].values())
@@ -187,12 +249,21 @@ if st.button("Analyze"):
         # Generate and Display Charts
         bar_chart_path = "/tmp/bar_chart.png"
         heatmap_path = "/tmp/heatmap.png"
+        scatter_chart_path = "/tmp/scatter_chart.png"
+        surface_chart_path = "/tmp/surface_chart.png"
         generate_bar_chart(swot_scores, bar_chart_path)
         generate_heatmap(swot_scores, heatmap_path)
+        generate_3d_scatter(swot_scores, scatter_chart_path)
+        generate_3d_surface(swot_scores, surface_chart_path)
+
         st.image(bar_chart_path, caption="SWOT Bar Chart")
         st.image(heatmap_path, caption="SWOT Heatmap")
 
+        # Display 3D Charts
+        st.image(scatter_chart_path, caption="3D Scatter Plot")
+        st.image(surface_chart_path, caption="3D Surface Plot")
+
         # Generate PDF Report
-        pdf_path = generate_pdf_report(swot_scores, lsi, lsi_interpretation, [bar_chart_path, heatmap_path])
+        pdf_path = generate_pdf_report(swot_scores, lsi, lsi_interpretation, behavior_inputs, [bar_chart_path, heatmap_path, scatter_chart_path, surface_chart_path])
         with open(pdf_path, "rb") as f:
             st.download_button("Download Professional PDF Report", f, "Leadership_Report.pdf", mime="application/pdf")
