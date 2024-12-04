@@ -384,34 +384,19 @@ if st.button("Analyze"):
             st.subheader(f"Leadership Viability Index (LSI): {lsi:.2f}")
             st.write(f"**Interpretation**: {lsi_interpretation}")
 
+            # Now, generate and display charts
+            heatmap_path, scatter_chart_path, surface_chart_path = generate_and_display_charts(swot_scores)
 
-def generate_and_display_charts(swot_scores):
-    # Define paths for saving charts
-    heatmap_path = "/tmp/heatmap.png"
-    scatter_chart_path = "/tmp/scatter_chart.png"
-    surface_chart_path = "/tmp/surface_chart.png"
-    
-    # Generate charts
-    generate_heatmap(swot_scores, heatmap_path)
-    generate_3d_scatter(swot_scores, scatter_chart_path)
-    generate_3d_surface(swot_scores, surface_chart_path)
-    
-    # Optionally, return paths if needed
-    return heatmap_path, scatter_chart_path, surface_chart_path
+            # Display the images using Streamlit
+            st.image(heatmap_path, caption="SWOT Heatmap")
 
-# Now, outside the function, you display the images
-heatmap_path, scatter_chart_path, surface_chart_path = generate_and_display_charts(swot_scores)
+            # Display 3D Charts
+            st.image(scatter_chart_path, caption="3D Scatter Plot")
+            st.image(surface_chart_path, caption="3D Surface Plot")
 
-# Display the images using Streamlit
-st.image(heatmap_path, caption="SWOT Heatmap")
+            # Generate PDF Report
+            pdf_path = generate_pdf_report(swot_scores, lsi, lsi_interpretation, behavior_inputs, [heatmap_path, scatter_chart_path, surface_chart_path])
 
-# Display 3D Charts
-st.image(scatter_chart_path, caption="3D Scatter Plot")
-st.image(surface_chart_path, caption="3D Surface Plot")
-
-# Generate PDF Report
-pdf_path = generate_pdf_report(swot_scores, lsi, lsi_interpretation, behavior_inputs, [heatmap_path, scatter_chart_path, surface_chart_path])
-
-# Display a download button for the PDF report
-with open(pdf_path, "rb") as f:
-    st.download_button("Download Professional PDF Report", f, "Leadership_Report.pdf", mime="application/pdf")
+            # Display a download button for the PDF report
+            with open(pdf_path, "rb") as f:
+                st.download_button("Download Professional PDF Report", f, "Leadership_Report.pdf", mime="application/pdf")
