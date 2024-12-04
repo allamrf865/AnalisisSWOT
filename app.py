@@ -351,12 +351,13 @@ for category, inputs in swot_inputs.items():
     swot_explanations[category] = category_explanations
 
 
-        # Analyze Behavior
-        behavior_scores = {}
-        for question, response in behavior_inputs.items():
-            if response.strip():
-                scores, _ = analyze_text_with_explanation(response, LEADERSHIP_QUALITIES["Positive"], 5, 1.0)
-                behavior_scores[question] = scores
+# Analyze Behavior
+behavior_scores = {}
+for question, response in behavior_inputs.items():
+    if response.strip():
+        scores, _ = analyze_text_with_explanation(response, LEADERSHIP_QUALITIES["Positive"], 5, 1.0)
+        behavior_scores[question] = scores
+
 
         # Calculate LSI
         total_strengths = sum(swot_scores["Strengths"].values())
