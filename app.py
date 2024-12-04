@@ -12,7 +12,7 @@ from datetime import datetime
 st.set_page_config(page_title="Advanced SWOT Leadership Analysis", page_icon="🌟", layout="wide")
 
 # Define Watermark
-WATERMARK = "AI by Muhammad Allam Rafi, CBOA® CDSP®"
+WATERMARK = "AI by Muhammad Allam Rafi, FKUI 2022"
 
 # Load NLP Model
 @st.cache_resource
