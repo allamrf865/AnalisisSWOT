@@ -342,7 +342,6 @@ if st.button("Analyze"):
         st.write(f"**Interpretation**: {lsi_interpretation}")
 
         # Generate and Display Charts
-        bar_chart_path = "/tmp/bar_chart.png"
         heatmap_path = "/tmp/heatmap.png"
         scatter_chart_path = "/tmp/scatter_chart.png"
         surface_chart_path = "/tmp/surface_chart.png"
@@ -351,7 +350,6 @@ if st.button("Analyze"):
         generate_3d_scatter(swot_scores, scatter_chart_path)
         generate_3d_surface(swot_scores, surface_chart_path)
 
-        st.image(bar_chart_path, caption="SWOT Bar Chart")
         st.image(heatmap_path, caption="SWOT Heatmap")
 
         # Display 3D Charts
