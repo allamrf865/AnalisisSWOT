@@ -66,8 +66,7 @@ with st.sidebar:
     """)
     st.markdown("### **📫 Contact Me**")
     st.markdown("""
-    - [LinkedIn](https://linkedin.com)  
-    - [GitHub](https://github.com)  
+    - [IG](https://instagram.com/allamrf865)  
     - [Email](mailto:allamrafi@example.com)  
     """)
     st.markdown(f"---\n🌟 **{WATERMARK}** 🌟")
@@ -155,14 +154,6 @@ def generate_bar_chart(data, output_path):
             values.append(0)
             logging.warning(f"Error in category '{cat}': {str(e)}. Defaulting to 0.")
 
-    # Generate bar chart
-    plt.figure(figsize=(8, 5))
-    colors = plt.cm.Paired(np.linspace(0, 1, len(categories)))  # Warna dinamis
-    plt.bar(categories, values, color=colors)
-    plt.title("SWOT Analysis Summary")
-    plt.xlabel("Categories")
-    plt.ylabel("Scores")
-    plt.tight_layout()
 # Generate Heatmap
 def generate_heatmap(data, output_path):
     df = pd.DataFrame(data).T.fillna(0)
