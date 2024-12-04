@@ -327,8 +327,10 @@ if st.button("Analyze"):
         for category, inputs in swot_inputs.items():
             category_scores, category_explanations = {}, {}
             qualities = (
-                LEADERSHIP_QUALITIES["Positive"] if category in ["Strengths", "Opportunities"]
-                else LEADERSHIP_QUALITIES["Negative"] if category == "Threats"
+                LEADERSHIP_QUALITIES["Positive"] if category in ["Strengths"]
+                else LEADERSHIP_QUALITIES["Negative"] if category == "Weakness"
+                 else LEADERSHIP_QUALITIES["External Opportunities"] if category == "Oppurtunity"
+                else LEADERSHIP_QUALITIES["External Threats"] if category == "Threat"
                 else LEADERSHIP_QUALITIES["Neutral"]
             )
             for text, confidence in inputs:
