@@ -357,13 +357,13 @@ if st.button("Analyze"):
                 scores, _ = analyze_text_with_explanation(response, LEADERSHIP_QUALITIES["Positive"], 5, 1.0)
                 behavior_scores[question] = scores
 
-# Calculate LSI based on all SWOT categories
-total_strengths = sum(swot_scores["Strengths"].values())
-total_weaknesses = sum(swot_scores["Weaknesses"].values())
-total_opportunities = sum(swot_scores["Opportunities"].values())
-total_threats = sum(swot_scores["Threats"].values())
+# Initialize the total scores as 0
+total_strengths = sum(swot_scores.get("Strengths", {}).values())
+total_weaknesses = sum(swot_scores.get("Weaknesses", {}).values())
+total_opportunities = sum(swot_scores.get("Opportunities", {}).values())
+total_threats = sum(swot_scores.get("Threats", {}).values())
 
-# Adjust formula to include all categories (Strengths, Weaknesses, Opportunities, and Threats)
+# Calculate LSI (Leadership Viability Index)
 lsi = np.log((total_strengths + total_opportunities + 1) / (total_weaknesses + total_threats + 1))
 
 # Interpretation based on LSI value
