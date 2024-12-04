@@ -347,6 +347,6 @@ if st.button("Analyze"):
         st.image(surface_chart_path, caption="3D Surface Plot")
 
         # Generate PDF Report
-        pdf_path = generate_pdf_report(swot_scores, lsi, lsi_interpretation, behavior_inputs, [bar_chart_path, heatmap_path, scatter_chart_path, surface_chart_path])
+        pdf_path = generate_pdf_report(swot_scores, lsi, lsi_interpretation, behavior_inputs, [heatmap_path, scatter_chart_path, surface_chart_path])
         with open(pdf_path, "rb") as f:
             st.download_button("Download Professional PDF Report", f, "Leadership_Report.pdf", mime="application/pdf")
