@@ -322,8 +322,6 @@ if st.button("Analyze"):
     if not validate_inputs(swot_inputs, behavior_inputs):
         st.warning("Please provide at least one valid input for SWOT or Behavioral analysis.")
     else:
-        # Analyze SWOT
-# Analyze SWOT
 swot_scores, swot_explanations = {}, {}
 
 for category, inputs in swot_inputs.items():
