@@ -404,8 +404,6 @@ if st.button("Analyze"):
 
     return heatmap_path, scatter_chart_path, surface_chart_path
 
-
-
             # Generate PDF Report
             pdf_path = generate_pdf_report(swot_scores, lsi, lsi_interpretation, behavior_inputs, [heatmap_path, scatter_chart_path, surface_chart_path])
 
