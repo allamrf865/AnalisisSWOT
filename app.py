@@ -360,9 +360,6 @@ if st.button("Analyze"):
         # Calculate LSI (Leadership Viability Index)
         lsi = np.log((total_strengths + total_opportunities + 1) / (total_weaknesses + total_threats + 1))
 
-import logging
-logging.info(f"SWOT Scores: {swot_scores}")
-
 # Interpretation based on LSI value
 lsi_interpretation = (
     "Exceptional Leadership Potential" if lsi > 1.5 else
