@@ -401,11 +401,11 @@ def generate_and_display_charts(swot_scores):
     generate_3d_surface(swot_scores, surface_chart_path)
     st.image(surface_chart_path, caption="3D Surface Plot", use_column_width=True)
 
+    # Generate PDF Report
+    pdf_path = generate_pdf_report(swot_scores, lsi, lsi_interpretation, behavior_inputs, [heatmap_path, scatter_chart_path, surface_chart_path])
+
+    # Display a download button for the PDF report
+    with open(pdf_path, "rb") as f:
+        st.download_button("Download Professional PDF Report", f, "Leadership_Report.pdf", mime="application/pdf")
+
     return heatmap_path, scatter_chart_path, surface_chart_path
-
-            # Generate PDF Report
-            pdf_path = generate_pdf_report(swot_scores, lsi, lsi_interpretation, behavior_inputs, [heatmap_path, scatter_chart_path, surface_chart_path])
-
-            # Display a download button for the PDF report
-            with open(pdf_path, "rb") as f:
-                st.download_button("Download Professional PDF Report", f, "Leadership_Report.pdf", mime="application/pdf")
