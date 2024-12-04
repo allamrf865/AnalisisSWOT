@@ -4,6 +4,7 @@ import pandas as pd
 from sentence_transformers import SentenceTransformer, util
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import seaborn as sns
 from fpdf import FPDF
 from datetime import datetime
 
@@ -61,25 +62,66 @@ LEADERSHIP_QUALITIES = {
     }
 }
 
+
 CATEGORY_WEIGHTS = {"Strengths": 1.5, "Weaknesses": 1.3, "Opportunities": 1.4, "Threats": 1.2}
 
-# Collect Inputs
-def collect_inputs():
-    swot_inputs = {cat: [(st.text_area(f"{cat} #{i+1}"), st.slider(f"{cat} #{i+1} Confidence", 1, 10, 5)) for i in range(3)] for cat in ["Strengths", "Weaknesses", "Opportunities", "Threats"]}
+# Sidebar Information
+with st.sidebar:
+    st.image("https://via.placeholder.com/150", caption="Muhammad Allam Rafi", use_column_width=True)
+    st.markdown("### **🌟 About Me 🌟**")
+    st.markdown("""
+    👨‍⚕️ **Medical Student**  
+    Passionate about **Machine Learning**, **Leadership Research**, and **Healthcare AI**.  
+    - 🎓 **Faculty of Medicine**, Universitas Indonesia  
+    - 📊 **Research Interests**:  
+      - Leadership Viability in Healthcare  
+      - AI-driven solutions for medical challenges  
+      - Natural Language Processing and Behavioral Analysis  
+    - 🧑‍💻 **Skills**: Python, NLP, Data Visualization
+    """)
+    st.markdown("### **📫 Contact Me**")
+    st.markdown("""
+    - [IG](https://instagram.com/allamrf865)  
+    - [Email](mailto:allamrafi@example.com)  
+    """)
+    st.markdown(f"---\n🌟 **{WATERMARK}** 🌟")
 
-    behavior_questions = {
-        "Q1": "Describe how you handle stress.",
-        "Q2": "What motivates you to lead others?",
-        "Q3": "How do you approach conflict resolution?",
-        "Q4": "What is your strategy for long-term planning?",
-        "Q5": "How do you inspire teamwork in challenging situations?"
-    }
+# Header Section
+st.markdown("<h1 style='text-align: center; color: #4CAF50;'>🌟 SWOT Leadership Analysis 🌟</h1>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center; color: #808080;'>Advanced Evaluation of Leadership Potential</h3>", unsafe_allow_html=True)
+st.markdown("---")
 
-    behavior_inputs = {q: st.text_area(q) for q in behavior_questions.values()}
-    
-    return swot_inputs, behavior_inputs
+# Dynamic NLP Explanation Function
+def dynamic_nlp_explanation(text, traits):
+    text_embedding = model.encode(text, convert_to_tensor=True)
+    explanations = []
+    for trait, description in traits.items():
+        trait_embedding = model.encode(description, convert_to_tensor=True)
+        similarity = util.pytorch_cos_sim(text_embedding, trait_embedding).item()
+        if similarity > 0.75:
+            relevance = "highly aligns"
+        elif similarity > 0.5:
+            relevance = "moderately aligns"
+        else:
+            relevance = "has low alignment"
+        explanations.append(
+            f"'{text}' {relevance} with the trait '{trait}' ({description}). Similarity score: {similarity:.2f}."
+        )
+    return explanations
+
+# Validate Inputs
+def validate_inputs(swot_inputs, behavior_inputs):
+    for category, inputs in swot_inputs.items():
+        for text, _ in inputs:
+            if text.strip():
+                return True
+    for response in behavior_inputs.values():
+        if response.strip():
+            return True
+    return False
 
 # Analyze Text with NLP
+# Analyze Text with Explanation
 def analyze_text_with_explanation(text, qualities, confidence, category_weight):
     if not text.strip():
         return {}, {}
@@ -96,14 +138,134 @@ def analyze_text_with_explanation(text, qualities, confidence, category_weight):
 
 # Validate Inputs
 def validate_inputs(swot_inputs, behavior_inputs):
+    # Validate SWOT inputs including new categories
     for category, inputs in swot_inputs.items():
         for text, _ in inputs:
             if text.strip():  # Valid text
                 return True
+    # Validate behavioral analysis
     for response in behavior_inputs.values():
         if response.strip():
             return True
     return False  # If all inputs are empty
+
+swot_inputs = {
+    cat: [
+        (
+            st.text_area(f"{cat} #{i+1}", key=f"{cat}_text_{i+1}"),
+            st.slider(f"{cat} #{i+1} Confidence", 1, 10, 5, key=f"{cat}_slider_{i+1}")
+        )
+        for i in range(3)
+    ]
+    for cat in ["Strengths", "Weaknesses", "Opportunities", "Threats", "External Opportunities", "External Threats"]
+}
+
+import logging
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)  # Bisa diubah ke DEBUG jika perlu lebih detail
+
+def generate_bar_chart(data, output_path):
+    categories = list(data.keys())
+    values = []
+    
+    for cat in categories:
+        try:
+            # Pastikan data yang digunakan adalah numerik, jika tidak fallback ke 0
+            if not all(isinstance(i, (int, float)) for i in data[cat]):
+                raise ValueError(f"Non-numeric data found in category '{cat}'")
+            mean_value = np.mean(data[cat]) if len(data[cat]) > 0 else 0
+            values.append(mean_value)
+        except (TypeError, ValueError) as e:
+            # Catat peringatan dalam log, tanpa menampilkan peringatan UI
+            values.append(0)
+            logging.warning(f"Error in category '{cat}': {str(e)}. Defaulting to 0.")
+
+# Generate Heatmap
+def generate_heatmap(data, output_path):
+    df = pd.DataFrame(data).T.fillna(0)
+    plt.figure(figsize=(10, 6))
+    plt.imshow(df, cmap="viridis", interpolation="nearest", aspect="auto")
+    plt.colorbar(label="Scores")
+    plt.title("SWOT Heatmap")
+    plt.xlabel("Traits")
+    plt.ylabel("Categories")
+    plt.tight_layout()
+    plt.savefig(output_path)
+    plt.close()
+
+# Generate 3D Scatter Plot with Error Handling
+def generate_3d_scatter(data, output_path):
+    # Ensure all categories have consistent keys and numeric values
+    all_traits = {trait for traits in data.values() for trait in traits.keys()}
+    fixed_data = {
+        category: {trait: traits.get(trait, 0) for trait in all_traits}
+        for category, traits in data.items()
+    }
+
+    try:
+        # Prepare data for 3D scatter plot
+        categories = list(fixed_data.keys())
+        traits = list(all_traits)
+        category_indices = np.arange(len(categories))
+
+        fig = plt.figure(figsize=(10, 7))
+        ax = fig.add_subplot(111, projection='3d')
+
+        for category_idx, (category, traits_values) in enumerate(fixed_data.items()):
+            xs = np.arange(len(traits_values))  # Traits indices
+            ys = list(traits_values.values())  # Trait values
+            zs = [category_idx] * len(xs)      # Fixed Z for each category
+            ax.scatter(xs, zs, ys, label=category)
+
+        ax.set_title("3D Scatter Plot - SWOT Scores")
+        ax.set_xlabel("Traits")
+        ax.set_ylabel("Categories")
+        ax.set_zlabel("Scores")
+        ax.legend(loc="best")
+        plt.tight_layout()
+        plt.savefig(output_path)
+        plt.close()
+    except Exception as e:
+        st.error(f"Error generating 3D scatter plot: {e}")
+        st.warning("Ensure all input data is valid and numeric.")
+
+
+# Generate 3D Surface Plot with Error Handling
+def generate_3d_surface(data, output_path):
+    # Ensure all categories have consistent keys and numeric values
+    all_traits = {trait for traits in data.values() for trait in traits.keys()}
+    fixed_data = {
+        category: {trait: traits.get(trait, 0) for trait in all_traits}
+        for category, traits in data.items()
+    }
+    
+    try:
+        # Convert to numpy array
+        categories = list(fixed_data.keys())
+        traits = list(all_traits)
+        
+        # Ensure consistent ordering of traits for each category
+        z = np.array([list(fixed_data[category].values()) for category in categories])
+        
+        # Generate X and Y grids
+        x = np.arange(len(categories))
+        y = np.arange(len(traits))
+        x, y = np.meshgrid(x, y)
+        
+        # Plot 3D Surface
+        fig = plt.figure(figsize=(10, 7))
+        ax = fig.add_subplot(111, projection='3d')
+        ax.plot_surface(x, y, z.T, cmap="viridis", edgecolor='k')  # Transpose Z to match dimensions
+        ax.set_title("3D Surface Plot - SWOT Scores")
+        ax.set_xlabel("Categories")
+        ax.set_ylabel("Traits")
+        ax.set_zlabel("Scores")
+        plt.savefig(output_path)
+        plt.close()
+    except ValueError as e:
+        st.error(f"Error generating 3D surface plot: {e}")
+        st.warning("Ensure data has consistent numeric values across all categories and traits.")
 
 # Generate PDF Report
 class PDFReport(FPDF):
@@ -143,18 +305,31 @@ def generate_pdf_report(swot_scores, lsi, lsi_interpretation, behavior_results, 
     pdf.output("/tmp/report.pdf")
     return "/tmp/report.pdf"
 
-# Main logic
+# Behavior Questions
+behavior_questions = {
+    "Q1": "Describe how you handle stress.",
+    "Q2": "What motivates you to lead others?",
+    "Q3": "How do you approach conflict resolution?",
+    "Q4": "What is your strategy for long-term planning?",
+    "Q5": "How do you inspire teamwork in challenging situations?"
+}
+
+# Collect Inputs
+swot_inputs = {cat: [(st.text_area(f"{cat} #{i+1}"), st.slider(f"{cat} #{i+1} Confidence", 1, 10, 5)) for i in range(3)] for cat in ["Strengths", "Weaknesses", "Opportunities", "Threats"]}
+behavior_inputs = {q: st.text_area(q) for q in behavior_questions.values()}
+
 if st.button("Analyze"):
-    swot_inputs, behavior_inputs = collect_inputs()
-    
     if not validate_inputs(swot_inputs, behavior_inputs):
         st.warning("Please provide at least one valid input for SWOT or Behavioral analysis.")
     else:
+        # Initialize swot_scores and swot_explanations here, inside the else block
         swot_scores, swot_explanations = {}, {}
 
+        # Process the SWOT Inputs and analyze the text with explanations
         for category, inputs in swot_inputs.items():
             category_scores, category_explanations = {}, {}
 
+            # Determine qualities based on category
             if category == "Strengths":
                 qualities = LEADERSHIP_QUALITIES["Positive"]
             elif category == "Weaknesses":
@@ -163,48 +338,74 @@ if st.button("Analyze"):
                 qualities = LEADERSHIP_QUALITIES["External Opportunities"]
             elif category == "Threats":
                 qualities = LEADERSHIP_QUALITIES["External Threats"]
+            else:
+                qualities = LEADERSHIP_QUALITIES["Neutral"]
 
+            # Process text and scores
             for text, confidence in inputs:
                 scores, explanations = analyze_text_with_explanation(text, qualities, confidence, CATEGORY_WEIGHTS.get(category, 1))
                 category_scores.update(scores)
                 category_explanations.update(explanations)
 
+            # Save category scores and explanations
             swot_scores[category] = category_scores
             swot_explanations[category] = category_explanations
 
-        total_strengths = sum(swot_scores.get("Strengths", {}).values())
-        total_opportunities = sum(swot_scores.get("Opportunities", {}).values())
-        total_weaknesses = sum(swot_scores.get("Weaknesses", {}).values())
-        total_threats = sum(swot_scores.get("Threats", {}).values())
+        # Safely calculate total scores after swot_scores is populated
+        total_strengths = sum(swot_scores.get("Strengths", {}).values()) if "Strengths" in swot_scores else 0
+        total_opportunities = sum(swot_scores.get("Opportunities", {}).values()) if "Opportunities" in swot_scores else 0
+        total_weaknesses = sum(swot_scores.get("Weaknesses", {}).values()) if "Weaknesses" in swot_scores else 0
+        total_threats = sum(swot_scores.get("Threats", {}).values()) if "Threats" in swot_scores else 0
 
+        # Check for NaN or Infinite values before calculation
         if any(np.isnan(value) or np.isinf(value) for value in [total_strengths, total_opportunities, total_weaknesses, total_threats]):
-            st.warning("Invalid data encountered. Please review your input values.")
-
-        lsi = total_strengths + total_opportunities - total_weaknesses - total_threats
-        if lsi > 8:
-            lsi_interpretation = "Excellent Leadership Potential."
-        elif lsi > 5:
-            lsi_interpretation = "Good Leadership Potential."
+            st.error("One or more values are invalid (NaN or Infinite). Please check your input.")
+            lsi = np.nan  # Handle the case of invalid input
         else:
-            lsi_interpretation = "Leadership Potential Needs Improvement."
-        
-        # Chart generation (Optional for visual feedback)
-        fig = plt.figure(figsize=(8, 6))
-        ax = fig.add_subplot(111, projection='3d')
-        ax.scatter(total_strengths, total_opportunities, total_weaknesses, c='r', marker='o')
-        ax.set_xlabel('Strengths')
-        ax.set_ylabel('Opportunities')
-        ax.set_zlabel('Weaknesses')
-        plt.savefig("/tmp/leadership_chart.png")
+            denominator = (total_weaknesses + total_threats + 1)
+            if denominator == 0:
+                lsi = 0  # Handle edge case of division by zero
+            else:
+                lsi = np.log((total_strengths + total_opportunities + 1) / denominator)
 
-        behavior_results = {
-            "How you handle stress": behavior_inputs.get("Q1", ""),
-            "What motivates you": behavior_inputs.get("Q2", ""),
-            "How you approach conflict": behavior_inputs.get("Q3", ""),
-            "Long-term planning strategy": behavior_inputs.get("Q4", ""),
-            "Inspiring teamwork": behavior_inputs.get("Q5", "")
-        }
+        # Output result
+        st.subheader(f"Leadership Viability Index (LSI): {lsi:.2f}" if not np.isnan(lsi) else "Invalid LSI Calculation")
 
-        chart_paths = ["/tmp/leadership_chart.png"]
-        pdf_report_path = generate_pdf_report(swot_scores, lsi, lsi_interpretation, behavior_results, chart_paths)
-        st.download_button("Download Report", pdf_report_path, file_name="Leadership_Report.pdf")
+        # Calculate LSI (Leadership Viability Index)
+        if not np.isnan(lsi):
+            lsi_interpretation = (
+                "Exceptional Leadership Potential" if lsi > 1.5 else
+                "Good Leadership Potential" if lsi > 0.5 else
+                "Moderate Leadership Potential" if lsi > -0.5 else
+                "Needs Improvement"
+            )
+
+            # Display LSI and Interpretation
+            st.subheader(f"Leadership Viability Index (LSI): {lsi:.2f}")
+            st.write(f"**Interpretation**: {lsi_interpretation}")
+def generate_and_display_charts(swot_scores):
+    # Paths to save the charts
+    heatmap_path = "/tmp/heatmap.png"
+    scatter_chart_path = "/tmp/scatter_plot.png"
+    surface_chart_path = "/tmp/surface_plot.png"
+
+    # Generate Heatmap
+    generate_heatmap(swot_scores, heatmap_path)
+    st.image(heatmap_path, caption="SWOT Heatmap", use_column_width=True)
+
+    # Generate 3D Scatter Plot
+    generate_3d_scatter(swot_scores, scatter_chart_path)
+    st.image(scatter_chart_path, caption="3D Scatter Plot", use_column_width=True)
+
+    # Generate 3D Surface Plot
+    generate_3d_surface(swot_scores, surface_chart_path)
+    st.image(surface_chart_path, caption="3D Surface Plot", use_column_width=True)
+
+    # Generate PDF Report
+    pdf_path = generate_pdf_report(swot_scores, lsi, lsi_interpretation, behavior_inputs, [heatmap_path, scatter_chart_path, surface_chart_path])
+
+    # Display a download button for the PDF report
+    with open(pdf_path, "rb") as f:
+        st.download_button("Download Professional PDF Report", f, "Leadership_Report.pdf", mime="application/pdf")
+
+    return heatmap_path, scatter_chart_path, surface_chart_path
