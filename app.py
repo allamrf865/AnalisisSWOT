@@ -323,21 +323,34 @@ if st.button("Analyze"):
         st.warning("Please provide at least one valid input for SWOT or Behavioral analysis.")
     else:
         # Analyze SWOT
-        swot_scores, swot_explanations = {}, {}
-        for category, inputs in swot_inputs.items():
-            category_scores, category_explanations = {}, {}
-            qualities = (
-                LEADERSHIP_QUALITIES["Positive"] if category in ["Strengths"]
-                else LEADERSHIP_QUALITIES["Negative"] if category == "Weakness"
-                 else LEADERSHIP_QUALITIES["External Opportunities"] if category == "Oppurtunity"
-                else LEADERSHIP_QUALITIES["External Threats"] if category == "Threat"
-                else LEADERSHIP_QUALITIES["Neutral"]
-            )
-            for text, confidence in inputs:
-                scores, explanations = analyze_text_with_explanation(text, qualities, confidence, CATEGORY_WEIGHTS[category])
-                category_scores.update(scores)
-                category_explanations.update(explanations)
-            swot_scores[category] = category_scores
+# Analyze SWOT
+swot_scores, swot_explanations = {}, {}
+
+for category, inputs in swot_inputs.items():
+    category_scores, category_explanations = {}, {}
+    
+    # Menentukan kualitas berdasarkan kategori yang relevan
+    if category == "Strengths":
+        qualities = LEADERSHIP_QUALITIES["Positive"]
+    elif category == "Weaknesses":
+        qualities = LEADERSHIP_QUALITIES["Negative"]
+    elif category == "Opportunities":
+        qualities = LEADERSHIP_QUALITIES["External Opportunities"]
+    elif category == "Threats":
+        qualities = LEADERSHIP_QUALITIES["External Threats"]
+    else:
+        qualities = LEADERSHIP_QUALITIES["Neutral"]
+    
+    # Memproses teks dan skor berdasarkan kategori
+    for text, confidence in inputs:
+        scores, explanations = analyze_text_with_explanation(text, qualities, confidence, CATEGORY_WEIGHTS[category])
+        category_scores.update(scores)
+        category_explanations.update(explanations)
+    
+    # Menyimpan hasil skor dan penjelasan untuk setiap kategori
+    swot_scores[category] = category_scores
+    swot_explanations[category] = category_explanations
+
 
         # Analyze Behavior
         behavior_scores = {}
