@@ -392,11 +392,15 @@ def generate_and_display_charts(swot_scores):
     # Optionally, return paths if needed
     return heatmap_path, scatter_chart_path, surface_chart_path
 
-        st.image(heatmap_path, caption="SWOT Heatmap")
+# Now, outside the function, you display the images
+heatmap_path, scatter_chart_path, surface_chart_path = generate_and_display_charts(swot_scores)
 
-        # Display 3D Charts
-        st.image(scatter_chart_path, caption="3D Scatter Plot")
-        st.image(surface_chart_path, caption="3D Surface Plot")
+# Display the images using Streamlit
+st.image(heatmap_path, caption="SWOT Heatmap")
+
+# Display 3D Charts
+st.image(scatter_chart_path, caption="3D Scatter Plot")
+st.image(surface_chart_path, caption="3D Surface Plot")
 
         # Generate PDF Report
         pdf_path = generate_pdf_report(swot_scores, lsi, lsi_interpretation, behavior_inputs, [heatmap_path, scatter_chart_path, surface_chart_path])
