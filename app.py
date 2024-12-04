@@ -351,38 +351,40 @@ if st.button("Analyze"):
             swot_scores[category] = category_scores
             swot_explanations[category] = category_explanations
 
-        # Safely calculate total scores after swot_scores is populated
-        total_strengths = sum(swot_scores.get("Strengths", {}).values()) if "Strengths" in swot_scores else 0
-        total_opportunities = sum(swot_scores.get("Opportunities", {}).values()) if "Opportunities" in swot_scores else 0
-        total_weaknesses = sum(swot_scores.get("Weaknesses", {}).values()) if "Weaknesses" in swot_scores else 0
-        total_threats = sum(swot_scores.get("Threats", {}).values()) if "Threats" in swot_scores else 0
+# Safely calculate total scores after swot_scores is populated
+total_strengths = sum(swot_scores.get("Strengths", {}).values()) if "Strengths" in swot_scores else 0
+total_opportunities = sum(swot_scores.get("Opportunities", {}).values()) if "Opportunities" in swot_scores else 0
+total_weaknesses = sum(swot_scores.get("Weaknesses", {}).values()) if "Weaknesses" in swot_scores else 0
+total_threats = sum(swot_scores.get("Threats", {}).values()) if "Threats" in swot_scores else 0
 
-        # Check for NaN or Infinite values before calculation
-        if any(np.isnan(value) or np.isinf(value) for value in [total_strengths, total_opportunities, total_weaknesses, total_threats]):
-            st.error("One or more values are invalid (NaN or Infinite). Please check your input.")
-            lsi = np.nan  # Handle the case of invalid input
-        else:
-            denominator = (total_weaknesses + total_threats + 1)
-            if denominator == 0:
-                lsi = 0  # Handle edge case of division by zero
-            else:
-                lsi = np.log((total_strengths + total_opportunities + 1) / denominator)
+# Check for NaN or Infinite values before calculation
+if any(np.isnan(value) or np.isinf(value) for value in [total_strengths, total_opportunities, total_weaknesses, total_threats]):
+    st.error("One or more values are invalid (NaN or Infinite). Please check your input.")
+    lsi = np.nan  # Handle the case of invalid input
+else:
+    denominator = (total_weaknesses + total_threats + 1)
+    if denominator == 0:
+        lsi = 0  # Handle edge case of division by zero
+    else:
+        lsi = np.log((total_strengths + total_opportunities + 1) / denominator)
 
-        # Output result
-        st.subheader(f"Leadership Viability Index (LSI): {lsi:.2f}" if not np.isnan(lsi) else "Invalid LSI Calculation")
+# Output result
+st.subheader(f"Leadership Viability Index (LSI): {lsi:.2f}" if not np.isnan(lsi) else "Invalid LSI Calculation")
 
-        # Calculate LSI (Leadership Viability Index)
-        if not np.isnan(lsi):
-            lsi_interpretation = (
-                "Exceptional Leadership Potential" if lsi > 1.5 else
-                "Good Leadership Potential" if lsi > 0.5 else
-                "Moderate Leadership Potential" if lsi > -0.5 else
-                "Needs Improvement"
-            )
+# Calculate LSI (Leadership Viability Index)
+if not np.isnan(lsi):
+    lsi_interpretation = (
+        "Exceptional Leadership Potential" if lsi > 1.5 else
+        "Good Leadership Potential" if lsi > 0.5 else
+        "Moderate Leadership Potential" if lsi > -0.5 else
+        "Needs Improvement"
+    )
 
-            # Display LSI and Interpretation
-            st.subheader(f"Leadership Viability Index (LSI): {lsi:.2f}")
-            st.write(f"**Interpretation**: {lsi_interpretation}")
+    # Display LSI and Interpretation
+    st.subheader(f"Leadership Viability Index (LSI): {lsi:.2f}")
+    st.write(f"**Interpretation**: {lsi_interpretation}")
+
+# Generate and Display Charts
 def generate_and_display_charts(swot_scores):
     # Paths to save the charts
     heatmap_path = "/tmp/heatmap.png"
