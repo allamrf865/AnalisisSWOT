@@ -24,13 +24,13 @@ model = load_model()
 # Define Leadership Traits
 LEADERSHIP_QUALITIES = {
     "Positive": {
-        "Leadership": "Ability to lead and inspire others.",
-        "Vision": "Clear and inspiring direction for the future.",
-        "Integrity": "Acting consistently with honesty and strong ethics.",
-        "Innovation": "Driving creativity and fostering change.",
-        "Inclusivity": "Promoting diversity and creating an inclusive environment.",
-        "Empathy": "Understanding others' perspectives and feelings.",
-        "Communication": "Conveying ideas clearly and effectively.",
+        "Leadership": "Ability to lead and inspire others (Internal Strength).",
+        "Vision": "Clear and inspiring direction for the future (Internal Strength).",
+        "Integrity": "Acting consistently with honesty and strong ethics (Internal Strength).",
+        "Innovation": "Driving creativity and fostering change (Internal Strength).",
+        "Inclusivity": "Promoting diversity and creating an inclusive environment (Internal Strength).",
+        "Empathy": "Understanding others' perspectives and feelings (Internal Strength).",
+        "Communication": "Conveying ideas clearly and effectively (Internal Strength).",
     },
     "Neutral": {
         "Adaptability": "Flexibility to adjust to new challenges.",
@@ -45,8 +45,23 @@ LEADERSHIP_QUALITIES = {
         "Conflict Avoidance": "Avoiding necessary confrontations.",
         "Indecisiveness": "Inability to make timely decisions.",
         "Rigidity": "Refusing to adapt to new circumstances.",
+    },
+    "External Opportunities": {
+        "Emerging Markets": "New geographical or sectoral markets that offer growth potential.",
+        "Technological Advancements": "Technological developments that can be leveraged for innovation.",
+        "Regulatory Changes": "Changes in regulations that create opportunities for growth or market entry.",
+        "Partnership Opportunities": "Potential collaborations with other organizations for mutual benefit.",
+        "Globalization": "Access to international markets and partnerships as a result of global interconnectedness."
+    },
+    "External Threats": {
+        "Academic Pressure": "Challenges arising from academic performance or deadlines.",
+        "Extracurricular Commitments": "Overinvolvement in external activities that could detract from leadership focus.",
+        "Economic Downturn": "External economic conditions affecting organizational success.",
+        "Technological Disruptions": "External technological advancements that might reduce the relevance of current leadership strategies.",
+        "Market Competition": "Increased competition in the job market or in a specific field."
     }
 }
+
 
 CATEGORY_WEIGHTS = {"Strengths": 1.5, "Weaknesses": 1.3, "Opportunities": 1.4, "Threats": 1.2}
 
@@ -106,6 +121,7 @@ def validate_inputs(swot_inputs, behavior_inputs):
     return False
 
 # Analyze Text with NLP
+# Analyze Text with Explanation
 def analyze_text_with_explanation(text, qualities, confidence, category_weight):
     if not text.strip():
         return {}, {}
@@ -122,16 +138,19 @@ def analyze_text_with_explanation(text, qualities, confidence, category_weight):
 
 # Validate Inputs
 def validate_inputs(swot_inputs, behavior_inputs):
-    # Validasi SWOT
+    # Validate SWOT inputs including new categories
     for category, inputs in swot_inputs.items():
         for text, _ in inputs:
-            if text.strip():  # Jika ada teks valid
+            if text.strip():  # Valid text
                 return True
-    # Validasi Behavior
+    # Validate behavioral analysis
     for response in behavior_inputs.values():
         if response.strip():
             return True
-    return False  # Semua input kosong
+    return False  # If all inputs are empty
+
+# Collect Inputs including new categories
+swot_inputs = {cat: [(st.text_area(f"{cat} #{i+1}"), st.slider(f"{cat} #{i+1} Confidence", 1, 10, 5)) for i in range(3)] for cat in ["Strengths", "Weaknesses", "Opportunities", "Threats", "External Opportunities", "External Threats"]}
 
 import logging
 
