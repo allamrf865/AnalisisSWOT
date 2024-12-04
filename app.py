@@ -358,7 +358,7 @@ if st.button("Analyze"):
         total_threats = sum(swot_scores.get("Threats", {}).values()) if "Threats" in swot_scores else 0
 
         # Calculate LSI (Leadership Viability Index)
-        lsi = np.log((total_strengths + total_opportunities + 1) / (total_weaknesses + total_threats + 1))
+lsi = np.log((total_strengths + total_opportunities + 1) / (total_weaknesses + total_threats + 1))
 
 # Interpretation based on LSI value
 lsi_interpretation = (
@@ -371,6 +371,7 @@ lsi_interpretation = (
 # Display LSI and Interpretation
 st.subheader(f"Leadership Viability Index (LSI): {lsi:.2f}")
 st.write(f"**Interpretation**: {lsi_interpretation}")
+
 
 def generate_and_display_charts(swot_scores):
     # Define paths for saving charts
