@@ -325,6 +325,7 @@ if st.button("Analyze"):
         # Initialize swot_scores and swot_explanations here, inside the else block
         swot_scores, swot_explanations = {}, {}
 
+        # Process the SWOT Inputs and analyze the text with explanations
         for category, inputs in swot_inputs.items():
             category_scores, category_explanations = {}, {}
 
@@ -342,7 +343,7 @@ if st.button("Analyze"):
 
             # Process text and scores
             for text, confidence in inputs:
-                scores, explanations = analyze_text_with_explanation(text, qualities, confidence, CATEGORY_WEIGHTS[category])
+                scores, explanations = analyze_text_with_explanation(text, qualities, confidence, CATEGORY_WEIGHTS.get(category, 1))
                 category_scores.update(scores)
                 category_explanations.update(explanations)
 
@@ -350,23 +351,17 @@ if st.button("Analyze"):
             swot_scores[category] = category_scores
             swot_explanations[category] = category_explanations
 
-        # Analyze Behavior
-        behavior_scores = {}
-        for question, response in behavior_inputs.items():
-            if response.strip():
-                scores, _ = analyze_text_with_explanation(response, LEADERSHIP_QUALITIES["Positive"], 5, 1.0)
-                behavior_scores[question] = scores
+        # Now calculate total scores only if the swot_scores is populated
+        total_strengths = sum(swot_scores.get("Strengths", {}).values()) if "Strengths" in swot_scores else 0
+        total_weaknesses = sum(swot_scores.get("Weaknesses", {}).values()) if "Weaknesses" in swot_scores else 0
+        total_opportunities = sum(swot_scores.get("Opportunities", {}).values()) if "Opportunities" in swot_scores else 0
+        total_threats = sum(swot_scores.get("Threats", {}).values()) if "Threats" in swot_scores else 0
 
-# Initialize the total scores as 0
-total_strengths = sum(swot_scores.get("Strengths", {}).values()) if "Strengths" in swot_scores else 0
-total_weaknesses = sum(swot_scores.get("Weaknesses", {}).values()) if "Weaknesses" in swot_scores else 0
-total_opportunities = sum(swot_scores.get("Opportunities", {}).values()) if "Opportunities" in swot_scores else 0
-total_threats = sum(swot_scores.get("Threats", {}).values()) if "Threats" in swot_scores else 0
+        # Calculate LSI (Leadership Viability Index)
+        lsi = np.log((total_strengths + total_opportunities + 1) / (total_weaknesses + total_threats + 1))
+
 import logging
 logging.info(f"SWOT Scores: {swot_scores}")
-
-# Calculate LSI (Leadership Viability Index)
-lsi = np.log((total_strengths + total_opportunities + 1) / (total_weaknesses + total_threats + 1))
 
 # Interpretation based on LSI value
 lsi_interpretation = (
