@@ -385,14 +385,25 @@ if st.button("Analyze"):
             st.write(f"**Interpretation**: {lsi_interpretation}")
 
             # Now, generate and display charts
-            heatmap_path, scatter_chart_path, surface_chart_path = generate_and_display_charts(swot_scores)
-
-            # Display the images using Streamlit
-            st.image(heatmap_path, caption="SWOT Heatmap")
-
-            # Display 3D Charts
-            st.image(scatter_chart_path, caption="3D Scatter Plot")
-            st.image(surface_chart_path, caption="3D Surface Plot")
+           def generate_and_display_charts(swot_scores):
+            # Paths to save the charts
+            heatmap_path = "/tmp/heatmap.png"
+            scatter_chart_path = "/tmp/scatter_plot.png"
+            surface_chart_path = "/tmp/surface_plot.png"
+        
+            # Generate Heatmap
+            generate_heatmap(swot_scores, heatmap_path)
+            st.image(heatmap_path, caption="SWOT Heatmap", use_column_width=True)
+        
+            # Generate 3D Scatter Plot
+            generate_3d_scatter(swot_scores, scatter_chart_path)
+            st.image(scatter_chart_path, caption="3D Scatter Plot", use_column_width=True)
+        
+            # Generate 3D Surface Plot
+            generate_3d_surface(swot_scores, surface_chart_path)
+            st.image(surface_chart_path, caption="3D Surface Plot", use_column_width=True)
+        
+            return heatmap_path, scatter_chart_path, surface_chart_path
 
             # Generate PDF Report
             pdf_path = generate_pdf_report(swot_scores, lsi, lsi_interpretation, behavior_inputs, [heatmap_path, scatter_chart_path, surface_chart_path])
