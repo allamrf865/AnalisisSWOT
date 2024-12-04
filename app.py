@@ -378,13 +378,19 @@ lsi_interpretation = (
 st.subheader(f"Leadership Viability Index (LSI): {lsi:.2f}")
 st.write(f"**Interpretation**: {lsi_interpretation}")
 
-        # Generate and Display Charts
-        heatmap_path = "/tmp/heatmap.png"
-        scatter_chart_path = "/tmp/scatter_chart.png"
-        surface_chart_path = "/tmp/surface_chart.png"
-        generate_heatmap(swot_scores, heatmap_path)
-        generate_3d_scatter(swot_scores, scatter_chart_path)
-        generate_3d_surface(swot_scores, surface_chart_path)
+def generate_and_display_charts(swot_scores):
+    # Define paths for saving charts
+    heatmap_path = "/tmp/heatmap.png"
+    scatter_chart_path = "/tmp/scatter_chart.png"
+    surface_chart_path = "/tmp/surface_chart.png"
+    
+    # Generate charts
+    generate_heatmap(swot_scores, heatmap_path)
+    generate_3d_scatter(swot_scores, scatter_chart_path)
+    generate_3d_surface(swot_scores, surface_chart_path)
+    
+    # Optionally, return paths if needed
+    return heatmap_path, scatter_chart_path, surface_chart_path
 
         st.image(heatmap_path, caption="SWOT Heatmap")
 
