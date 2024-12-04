@@ -384,7 +384,7 @@ if st.button("Analyze"):
             st.subheader(f"Leadership Viability Index (LSI): {lsi:.2f}")
             st.write(f"**Interpretation**: {lsi_interpretation}")
 
-           def generate_and_display_charts(swot_scores):
+            def generate_and_display_charts(swot_scores):
     # Paths to save the charts
     heatmap_path = "/tmp/heatmap.png"
     scatter_chart_path = "/tmp/scatter_plot.png"
