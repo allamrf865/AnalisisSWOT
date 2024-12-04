@@ -336,7 +336,6 @@ if st.button("Analyze"):
         heatmap_path = "/tmp/heatmap.png"
         scatter_chart_path = "/tmp/scatter_chart.png"
         surface_chart_path = "/tmp/surface_chart.png"
-        generate_bar_chart(swot_scores, bar_chart_path)
         generate_heatmap(swot_scores, heatmap_path)
         generate_3d_scatter(swot_scores, scatter_chart_path)
         generate_3d_surface(swot_scores, surface_chart_path)
