@@ -322,57 +322,61 @@ if st.button("Analyze"):
     if not validate_inputs(swot_inputs, behavior_inputs):
         st.warning("Please provide at least one valid input for SWOT or Behavioral analysis.")
     else:
-        # Pastikan kode berikut diindentasi dengan benar di bawah else
+        # Initialize swot_scores and swot_explanations here, inside the else block
         swot_scores, swot_explanations = {}, {}
 
-for category, inputs in swot_inputs.items():
-    category_scores, category_explanations = {}, {}
-    
-    # Menentukan kualitas berdasarkan kategori yang relevan
-    if category == "Strengths":
-        qualities = LEADERSHIP_QUALITIES["Positive"]
-    elif category == "Weaknesses":
-        qualities = LEADERSHIP_QUALITIES["Negative"]
-    elif category == "Opportunities":
-        qualities = LEADERSHIP_QUALITIES["External Opportunities"]
-    elif category == "Threats":
-        qualities = LEADERSHIP_QUALITIES["External Threats"]
-    else:
-        qualities = LEADERSHIP_QUALITIES["Neutral"]
-    
-    # Memproses teks dan skor berdasarkan kategori
-    for text, confidence in inputs:
-        scores, explanations = analyze_text_with_explanation(text, qualities, confidence, CATEGORY_WEIGHTS[category])
-        category_scores.update(scores)
-        category_explanations.update(explanations)
-    
-    # Menyimpan hasil skor dan penjelasan untuk setiap kategori
-    swot_scores[category] = category_scores
-    swot_explanations[category] = category_explanations
+        for category, inputs in swot_inputs.items():
+            category_scores, category_explanations = {}, {}
 
+            # Determine qualities based on category
+            if category == "Strengths":
+                qualities = LEADERSHIP_QUALITIES["Positive"]
+            elif category == "Weaknesses":
+                qualities = LEADERSHIP_QUALITIES["Negative"]
+            elif category == "Opportunities":
+                qualities = LEADERSHIP_QUALITIES["External Opportunities"]
+            elif category == "Threats":
+                qualities = LEADERSHIP_QUALITIES["External Threats"]
+            else:
+                qualities = LEADERSHIP_QUALITIES["Neutral"]
 
-# Analyze Behavior
-behavior_scores = {}
-for question, response in behavior_inputs.items():
-    if response.strip():
-        scores, _ = analyze_text_with_explanation(response, LEADERSHIP_QUALITIES["Positive"], 5, 1.0)
-        behavior_scores[question] = scores
+            # Process text and scores
+            for text, confidence in inputs:
+                scores, explanations = analyze_text_with_explanation(text, qualities, confidence, CATEGORY_WEIGHTS[category])
+                category_scores.update(scores)
+                category_explanations.update(explanations)
 
+            # Save category scores and explanations
+            swot_scores[category] = category_scores
+            swot_explanations[category] = category_explanations
 
-        # Calculate LSI
-        total_strengths = sum(swot_scores["Strengths"].values())
-        total_weaknesses = sum(swot_scores["Weaknesses"].values())
-        lsi = np.log((total_strengths + 1) / (total_weaknesses + 1))
-        lsi_interpretation = (
-            "Exceptional Leadership Potential" if lsi > 1.5 else
-            "Good Leadership Potential" if lsi > 0.5 else
-            "Moderate Leadership Potential" if lsi > -0.5 else
-            "Needs Improvement"
-        )
+        # Analyze Behavior
+        behavior_scores = {}
+        for question, response in behavior_inputs.items():
+            if response.strip():
+                scores, _ = analyze_text_with_explanation(response, LEADERSHIP_QUALITIES["Positive"], 5, 1.0)
+                behavior_scores[question] = scores
 
-        # Display LSI and Interpretation
-        st.subheader(f"Leadership Viability Index (LSI): {lsi:.2f}")
-        st.write(f"**Interpretation**: {lsi_interpretation}")
+# Calculate LSI based on all SWOT categories
+total_strengths = sum(swot_scores["Strengths"].values())
+total_weaknesses = sum(swot_scores["Weaknesses"].values())
+total_opportunities = sum(swot_scores["Opportunities"].values())
+total_threats = sum(swot_scores["Threats"].values())
+
+# Adjust formula to include all categories (Strengths, Weaknesses, Opportunities, and Threats)
+lsi = np.log((total_strengths + total_opportunities + 1) / (total_weaknesses + total_threats + 1))
+
+# Interpretation based on LSI value
+lsi_interpretation = (
+    "Exceptional Leadership Potential" if lsi > 1.5 else
+    "Good Leadership Potential" if lsi > 0.5 else
+    "Moderate Leadership Potential" if lsi > -0.5 else
+    "Needs Improvement"
+)
+
+# Display LSI and Interpretation
+st.subheader(f"Leadership Viability Index (LSI): {lsi:.2f}")
+st.write(f"**Interpretation**: {lsi_interpretation}")
 
         # Generate and Display Charts
         heatmap_path = "/tmp/heatmap.png"
@@ -392,3 +396,4 @@ for question, response in behavior_inputs.items():
         pdf_path = generate_pdf_report(swot_scores, lsi, lsi_interpretation, behavior_inputs, [heatmap_path, scatter_chart_path, surface_chart_path])
         with open(pdf_path, "rb") as f:
             st.download_button("Download Professional PDF Report", f, "Leadership_Report.pdf", mime="application/pdf")
+
