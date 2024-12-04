@@ -358,10 +358,10 @@ if st.button("Analyze"):
                 behavior_scores[question] = scores
 
 # Initialize the total scores as 0
-total_strengths = sum(swot_scores.get("Strengths", {}).values())
-total_weaknesses = sum(swot_scores.get("Weaknesses", {}).values())
-total_opportunities = sum(swot_scores.get("Opportunities", {}).values())
-total_threats = sum(swot_scores.get("Threats", {}).values())
+total_strengths = sum(swot_scores.get("Strengths", {}).values()) if "Strengths" in swot_scores else 0
+total_weaknesses = sum(swot_scores.get("Weaknesses", {}).values()) if "Weaknesses" in swot_scores else 0
+total_opportunities = sum(swot_scores.get("Opportunities", {}).values()) if "Opportunities" in swot_scores else 0
+total_threats = sum(swot_scores.get("Threats", {}).values()) if "Threats" in swot_scores else 0
 import logging
 logging.info(f"SWOT Scores: {swot_scores}")
 
