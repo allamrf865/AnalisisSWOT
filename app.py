@@ -362,6 +362,8 @@ total_strengths = sum(swot_scores.get("Strengths", {}).values())
 total_weaknesses = sum(swot_scores.get("Weaknesses", {}).values())
 total_opportunities = sum(swot_scores.get("Opportunities", {}).values())
 total_threats = sum(swot_scores.get("Threats", {}).values())
+import logging
+logging.info(f"SWOT Scores: {swot_scores}")
 
 # Calculate LSI (Leadership Viability Index)
 lsi = np.log((total_strengths + total_opportunities + 1) / (total_weaknesses + total_threats + 1))
