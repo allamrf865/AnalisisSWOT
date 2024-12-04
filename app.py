@@ -149,15 +149,14 @@ def generate_bar_chart(data, output_path):
             values.append(0)
             st.warning(f"Non-numeric or invalid data found in category '{cat}'. Defaulting to 0.")
     
-    # Proceed to generate the bar chart
+    # Generate bar chart
     plt.figure(figsize=(8, 5))
-    plt.bar(categories, values, color=['green', 'red', 'blue', 'orange'])
+    colors = plt.cm.Paired(np.linspace(0, 1, len(categories)))  # Warna dinamis
+    plt.bar(categories, values, color=colors)
     plt.title("SWOT Analysis Summary")
     plt.xlabel("Categories")
     plt.ylabel("Scores")
     plt.tight_layout()
-    plt.savefig(output_path)
-    plt.close()
 
 # Generate Heatmap
 def generate_heatmap(data, output_path):
