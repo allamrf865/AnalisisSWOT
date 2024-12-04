@@ -134,21 +134,27 @@ def validate_inputs(swot_inputs, behavior_inputs):
             return True
     return False  # Semua input kosong
 
-# Generate 2D Charts with Error Handling
+import logging
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)  # Bisa diubah ke DEBUG jika perlu lebih detail
+
 def generate_bar_chart(data, output_path):
     categories = list(data.keys())
     values = []
     
     for cat in categories:
         try:
-            # Safely calculate the mean, fallback to 0 if the category data is invalid
+            # Pastikan data yang digunakan adalah numerik, jika tidak fallback ke 0
+            if not all(isinstance(i, (int, float)) for i in data[cat]):
+                raise ValueError(f"Non-numeric data found in category '{cat}'")
             mean_value = np.mean(data[cat]) if len(data[cat]) > 0 else 0
             values.append(mean_value)
-        except TypeError:
-            # Handle cases where data[cat] contains non-numeric values
+        except (TypeError, ValueError) as e:
+            # Catat peringatan dalam log, tanpa menampilkan peringatan UI
             values.append(0)
-            st.warning(f"Non-numeric or invalid data found in category '{cat}'. Defaulting to 0.")
-    
+            logging.warning(f"Error in category '{cat}': {str(e)}. Defaulting to 0.")
+
     # Generate bar chart
     plt.figure(figsize=(8, 5))
     colors = plt.cm.Paired(np.linspace(0, 1, len(categories)))  # Warna dinamis
@@ -157,7 +163,6 @@ def generate_bar_chart(data, output_path):
     plt.xlabel("Categories")
     plt.ylabel("Scores")
     plt.tight_layout()
-
 # Generate Heatmap
 def generate_heatmap(data, output_path):
     df = pd.DataFrame(data).T.fillna(0)
