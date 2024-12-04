@@ -149,8 +149,16 @@ def validate_inputs(swot_inputs, behavior_inputs):
             return True
     return False  # If all inputs are empty
 
-# Collect Inputs including new categories
-swot_inputs = {cat: [(st.text_area(f"{cat} #{i+1}"), st.slider(f"{cat} #{i+1} Confidence", 1, 10, 5)) for i in range(3)] for cat in ["Strengths", "Weaknesses", "Opportunities", "Threats", "External Opportunities", "External Threats"]}
+swot_inputs = {
+    cat: [
+        (
+            st.text_area(f"{cat} #{i+1}", key=f"{cat}_text_{i+1}"),
+            st.slider(f"{cat} #{i+1} Confidence", 1, 10, 5, key=f"{cat}_slider_{i+1}")
+        )
+        for i in range(3)
+    ]
+    for cat in ["Strengths", "Weaknesses", "Opportunities", "Threats", "External Opportunities", "External Threats"]
+}
 
 import logging
 
